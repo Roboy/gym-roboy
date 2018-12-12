@@ -1,6 +1,8 @@
-
+output/
 *.egg-info
 *.pyc
 .idea
 /logs
 *~
+
+.pytest_cache/
