@@ -1,1 +1,1 @@
-from gym_foo.envs.msj_env import MsjEnv
+from .msj_env import MsjEnv
