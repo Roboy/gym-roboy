@@ -7,14 +7,20 @@
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
+import rclpy
+from roboy_simulation_msgs.srv import GymStep
 
 
 # In[12]:
 
 
 class MsjEnv(gym.GoalEnv):
-    #metadata = {'render.modes': ['human']}
-    def __init__(self, n_actions):
+    def __init__(self):
+        rclpy.init()
+        self.node = rclpy.create_node('gym_client')
+        self.cli = node.create_client(GymStep, 'gym_step')
+
+
         self.seed()
         #self._env_setup(initial_qpos=initial_qpos)
         #self.initial_state = copy.deepcopy(self.sim.get_state())
@@ -44,6 +50,7 @@ class MsjEnv(gym.GoalEnv):
             observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
         ))
         
+        
     # A function to initialize the random generator
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -51,6 +58,23 @@ class MsjEnv(gym.GoalEnv):
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
+        
+        set_points = [ 0.01,0.01,0.01,0.015,0.01,0.02,0.02,0.02]
+        while not cli.wait_for_service(timeout_sec=1.0):
+            node.get_logger().info('service not available, waiting...')
+
+        step_size = 1.0
+        req = GymStep.Request()
+        res = GymStep.Response()
+        req.set_points = set_points
+        req.step_size = step_size
+        future = cli.call_async(req)
+        rclpy.spin_until_future_complete(node,future)
+        if future.result() is not None:
+            node.get_logger().info("result: %f" % future.result().q[1])
+
+        
+
         self._set_action(action) #set the topic on of target poses
         self.sim.step() #unpause the simulation, implement a ROS2 service to command CARDSflow
         obs = self._get_obs()
@@ -62,14 +86,13 @@ class MsjEnv(gym.GoalEnv):
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         return obs, reward, done, info
     
-    def _set_action(self, action):
-        assert action.shape == (8,)
-        #Every ldot should be able to set its own motor.
-        #Create controller on KinDyn that directly take ldot as a command
+    def _sample_goal(self):
+        #sample a task space random goal
         pass
+
     def reset(self):
         #resetSim
-        #unpauseSim
+        #unpauseSim 
         #check topic publishers connection
         pass
     
@@ -100,3 +123,6 @@ class MsjEnv(gym.GoalEnv):
             return -d
 
 
+
+
+env = MsjEnv()
