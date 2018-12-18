@@ -4,5 +4,5 @@ output/
 .idea
 /logs
 *~
-
 .pytest_cache/
+.ipynb_checkpoints
