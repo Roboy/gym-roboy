@@ -1,0 +1,1 @@
+In order to run the test successfully, you need to source ROS2 (/ros2_install/install/setup.bash) and the ROS1-ROS2-bridge and CARDSFlow needs to be running.
