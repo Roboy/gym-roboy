@@ -87,7 +87,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         while not self.step_cli.wait_for_service(timeout_sec=1.0):
             self.node.get_logger().info('service not available, waiting...')
 
-        step_size = 1.0
+
         req = GymStep.Request()
         res = GymStep.Response()
         req.set_points = action
