@@ -6,12 +6,12 @@ from .ros_proxy import MsjROSProxy, MockMsjROSProxy, MsjRobotState
 
 
 class MsjEnv(gym.GoalEnv):
-    reward_range = (-1.0, 1.0)
+    reward_range = (-10.88279628, 0)  # max l2 distance given action bounds (-pi, pi) and action dim (3 right now).
 
     def __init__(self, ros_proxy: MsjROSProxy=MockMsjROSProxy(), seed: int = None):
         self.seed(seed)
         self._ros_proxy = ros_proxy
-        self._min_cosine_similarity_for_success = 0.9
+        
         self._max_joint_angle = np.pi
         self._max_tendon_speed = 0.02  # cm/s
         self._set_new_goal()
@@ -22,15 +22,19 @@ class MsjEnv(gym.GoalEnv):
             shape=(self._ros_proxy.DIM_ACTION,)
             , dtype='float32'
         )
+        self._l2_distance_for_success = self._l2_distance(
+            self._action_space.low, self._action_space.high) / 100  # 100 seems reasonable
 
         self.observation_space = spaces.Dict(dict(
             desired_goal=spaces.Box(-self._max_joint_angle, self._max_joint_angle, shape=(self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32'),
             achieved_goal=spaces.Box(-self._max_joint_angle, self._max_joint_angle, shape=(self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32'),
+            # 3 * DIM_JOINT_ANGLE from the observation = DIM_current_joint_velocity + DIM_current_joints + DIM_goal_joints
             observation=spaces.Box(-self._max_joint_angle, self._max_joint_angle, shape=(3*self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32'),
         ))
 
+
     def step(self, action):
-        action = np.clip(action, self._action_space.low, self._action_space.high)
+        action = np.clip(action, self._action_space.low, self._action_space.high).tolist()
         new_state = self._ros_proxy.forward_step_command(action)
         obs = self._make_obs(robot_state=new_state)
         info = {}
@@ -57,13 +61,11 @@ class MsjEnv(gym.GoalEnv):
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         current_joint_angle = achieved_goal
-        return self._cosine_similarity(current_joint_angle, self._goal_joint_angle)
+        return -self._l2_distance(current_joint_angle, desired_goal)
 
     @staticmethod
-    def _cosine_similarity(angle1: np.ndarray, angle2: np.ndarray):
-        """https://en.wikipedia.org/wiki/Cosine_similarity"""
-        norm = np.linalg.norm
-        return angle1.dot(angle2) / (norm(angle1, ord=2)*norm(angle2, ord=2))
+    def _l2_distance(joint_angle1, joint_angle2):
+        return np.linalg.norm(np.subtract(joint_angle1, joint_angle2), ord=2)
 
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""
@@ -74,6 +76,11 @@ class MsjEnv(gym.GoalEnv):
         self._goal_joint_angle = np.clip(new_joint_angle, -self._max_joint_angle, self._max_joint_angle)
 
     def _did_reach_goal(self, actual_joint_angle) -> bool:
-        cos_similarity = self._cosine_similarity(
-            actual_joint_angle, self._goal_joint_angle)
-        return bool(cos_similarity > self._min_cosine_similarity_for_success)
+        l2_distance = self._l2_distance(actual_joint_angle, self._goal_joint_angle)
+
+        print(actual_joint_angle)
+        print(self._goal_joint_angle)
+        print(l2_distance)
+        print(self._l2_distance_for_success)
+        
+        return bool(l2_distance < self._l2_distance_for_success) # bool for comparison to a numpy bool

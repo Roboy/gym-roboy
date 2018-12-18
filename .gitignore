@@ -2,6 +2,7 @@ output/
 *.egg-info
 *.pyc
 .idea
+.vscode/
 /logs
 *~
 .pytest_cache/
