@@ -2,6 +2,7 @@ import numpy as np
 import rclpy
 from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
+from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 
 
 class MsjRobotState:
@@ -30,6 +31,9 @@ class MsjROSProxy:
     def forward_reset_command(self) -> MsjRobotState:
         raise NotImplementedError
 
+    def forward_new_goal(self, _goal_joint_angle):
+        raise NotImplementedError
+
 
 class MockMsjROSProxy(MsjROSProxy):
     """This implementation is a mock for unit testing purposes."""
@@ -56,6 +60,7 @@ class MockMsjROSProxy(MsjROSProxy):
 
 
 class MsjROSBridgeProxy(MsjROSProxy):
+    _step_size = 0.01
 
     def __init__(self):
         try:
@@ -65,35 +70,51 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.node = rclpy.create_node('gym_client')
         self.step_cli = self.node.create_client(GymStep, 'gym_step')
         self.reset_cli = self.node.create_client(GymReset, 'gym_reset')
-    
+        self.new_goal_publisher = self.node.create_publisher(
+            msg_type=PoseStamped, topic="/robot_state_target")
+
+    def _log_robot_state(self, robot_state):
+        q = robot_state.q
+        qd = robot_state.qdot
+        q_str = str(q).strip('[]')
+        qd_str = str(qd).strip('[]')
+        self.node.get_logger().info("joint angles: %s" % q_str)
+        self.node.get_logger().info("joint velocity: %s" % qd_str)
+
     def forward_reset_command(self):
-        step_size = 1.0
         req = GymStep.Request()
         res = GymStep.Response()
-        req.step_size = step_size
+        req.step_size = self._step_size
         future = self.reset_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
+        res = future.result()
         if future.result() is not None:
-            self.node.get_logger().info("result: %f" % future.result().q[1])
-        q = future.result()
-        return MsjRobotState(joint_angle=q.q, joint_vel=q.qdot)
+            self._log_robot_state(res)
+        return self._make_robot_state(service_response=res)
+
+    @staticmethod
+    def _make_robot_state(service_response) -> MsjRobotState:
+        return MsjRobotState(joint_angle=service_response.q[3:],
+                             joint_vel=service_response.qdot[3:])
 
     def forward_step_command(self, action):
 
         while not self.step_cli.wait_for_service(timeout_sec=1.0):
             self.node.get_logger().info('service not available, waiting...')
 
-        step_size = 1.0
         req = GymStep.Request()
         res = GymStep.Response()
         req.set_points = action
-        req.step_size = step_size
+        req.step_size = self._step_size
         future = self.step_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
+        res = future.result()
         if future.result() is not None:
-            self.node.get_logger().info("result: %f" % future.result().q[1])
-        q = future.result()
-        return MsjRobotState(joint_angle=q.q, joint_vel=q.qdot)
+            self._log_robot_state(res)
+            #self.node.get_logger().info("feasible: " + str(res.feasible))
+            if not res.feasible:
+                return self.forward_reset_command()
+        return self._make_robot_state(res)
 
     def read_state(self):
         while not self.step_cli.wait_for_service(timeout_sec=1.0):
@@ -102,5 +123,29 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
 
-        q = future.result()
-        return MsjRobotState(joint_angle=q.q, joint_vel=q.qdot)
+        res = future.result()
+        return self._make_robot_state(res)
+
+    def forward_new_goal(self, goal_joint_angle):
+        assert len(goal_joint_angle) == 3
+
+        point = Point()
+        point.x = goal_joint_angle[0]
+        point.y = goal_joint_angle[1]
+        point.z = goal_joint_angle[2]
+
+        quaternion = Quaternion()
+        quaternion.x = 0.01
+        quaternion.z = 0.01
+        quaternion.y = 0.01
+        quaternion.w = 0.01
+
+        pose = Pose()
+        pose.position = point
+        pose.orientation = quaternion
+
+        msg = PoseStamped()
+        msg.pose = pose
+
+        self.node.get_logger().info("Publishing: " + str(msg.pose))
+        self.new_goal_publisher.publish(msg=msg)

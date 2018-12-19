@@ -11,7 +11,7 @@ class MsjEnv(gym.GoalEnv):
     def __init__(self, ros_proxy: MsjROSProxy=MockMsjROSProxy(), seed: int = None):
         self.seed(seed)
         self._ros_proxy = ros_proxy
-        
+
         self._max_joint_angle = np.pi
         self._max_tendon_speed = 0.02  # cm/s
         self._set_new_goal()
@@ -67,6 +67,7 @@ class MsjEnv(gym.GoalEnv):
             return
         new_joint_angle = np.random.random(self._ros_proxy.DIM_JOINT_ANGLE)
         self._goal_joint_angle = np.clip(new_joint_angle, -self._max_joint_angle, self._max_joint_angle)
+        self._ros_proxy.forward_new_goal(self._goal_joint_angle)
 
     def _did_reach_goal(self, actual_joint_angle) -> bool:
         l2_distance = self._l2_distance(actual_joint_angle, self._goal_joint_angle)
