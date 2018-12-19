@@ -48,7 +48,12 @@ class MockMsjROSProxy(MsjROSProxy):
         return self._state
 
     def forward_reset_command(self) -> MsjRobotState:
-        pass
+        self._state = MsjRobotState(
+            joint_angle=np.zeros(self.DIM_JOINT_ANGLE),
+            joint_vel=np.zeros(self.DIM_JOINT_ANGLE),
+        )
+        return self._state
+
 
 class MsjROSBridgeProxy(MsjROSProxy):
 

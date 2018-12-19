@@ -4,7 +4,6 @@ proxy = MsjROSBridgeProxy()
 
 def test_msj_ros_bridge_proxy_reset():
     """reset function sets all joint angles to zero in simulation"""
-    #assert "observation" in obs
     new_robot_state = proxy.forward_reset_command()
     assert np.allclose([0,0,0], new_robot_state.joint_angle)
     assert np.allclose([0,0,0], new_robot_state.joint_vel)

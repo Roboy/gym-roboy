@@ -16,41 +16,34 @@ class MsjEnv(gym.GoalEnv):
         self._max_tendon_speed = 0.02  # cm/s
         self._set_new_goal()
 
-        self._action_space = spaces.Box(
+        self.action_space = spaces.Box(
             low=-self._max_tendon_speed,
             high=self._max_tendon_speed,
             shape=(self._ros_proxy.DIM_ACTION,)
             , dtype='float32'
         )
         self._l2_distance_for_success = self._l2_distance(
-            self._action_space.low, self._action_space.high) / 100  # 100 seems reasonable
+            self.action_space.low, self.action_space.high) / 100  # 100 seems reasonable
 
-        self.observation_space = spaces.Dict(dict(
-            desired_goal=spaces.Box(-self._max_joint_angle, self._max_joint_angle, shape=(self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32'),
-            achieved_goal=spaces.Box(-self._max_joint_angle, self._max_joint_angle, shape=(self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32'),
-            # 3 * DIM_JOINT_ANGLE from the observation = DIM_current_joint_velocity + DIM_current_joints + DIM_goal_joints
-            observation=spaces.Box(-self._max_joint_angle, self._max_joint_angle, shape=(3*self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32'),
-        ))
-
+        # 3 * DIM_JOINT_ANGLE from the observation = DIM_current_joint_velocity + DIM_current_joints + DIM_goal_joints
+        self.observation_space = spaces.Box(-self._max_joint_angle, self._max_joint_angle,
+                                            shape=(3*self._ros_proxy.DIM_JOINT_ANGLE,), dtype='float32')
 
     def step(self, action):
-        action = np.clip(action, self._action_space.low, self._action_space.high).tolist()
+        action = np.clip(action, self.action_space.low, self.action_space.high).tolist()
         new_state = self._ros_proxy.forward_step_command(action)
         obs = self._make_obs(robot_state=new_state)
         info = {}
-        reward = self.compute_reward(obs['achieved_goal'], self._goal_joint_angle, info)
-        done = self._did_reach_goal(obs['achieved_goal'])
+        reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
+        done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
         return obs, reward, done, info
 
     def _make_obs(self, robot_state: MsjRobotState):
-        full_obs = np.concatenate(
-            [robot_state.joint_angle, robot_state.joint_vel, self._goal_joint_angle]
-        )
-        return {
-            'observation': full_obs,
-            'achieved_goal': robot_state.joint_angle.copy(),
-            'desired_goal': self._goal_joint_angle.copy(),
-        }
+        return np.concatenate([
+            robot_state.joint_angle,
+            robot_state.joint_vel,
+            self._goal_joint_angle
+        ])
 
     def reset(self):
         self._ros_proxy.forward_reset_command()
