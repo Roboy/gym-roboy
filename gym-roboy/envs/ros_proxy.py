@@ -61,7 +61,16 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.step_cli = self.node.create_client(GymStep, 'gym_step')
         self.reset_cli = self.node.create_client(GymReset, 'gym_reset')
         self.step_size = 1.0;
-    
+
+    def _log_robot_state(self, robot_state):
+        q = robot_state.q
+        qd = robot_state.qdot
+        q_str = str(q).strip('[]')
+        qd_str = str(qd).strip('[]')
+        self.node.get_logger().info("joint angles: %s" % q_str)
+        self.node.get_logger().info("joint velocity: %s" % qd_str)
+
+
     def forward_reset_command(self):
 
         while not self.reset_cli.wait_for_service(timeout_sec=1.0):
@@ -72,14 +81,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.reset_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
-            q = future.result().q
-            qd = future.result().qdot
-            q_str = str(q).strip('[]')
-            qd_str = str(qd).strip('[]')
-            self.node.get_logger().info("Reset, joint angles: %s" % q_str)
-            self.node.get_logger().info("Reset, joint velocity: %s" % qd_str)
+            robot_state = future.result()
+            _log_robot_state(robot_state)
 
-        robot_state = future.result()
         return MsjRobotState(joint_angle=robot_state.q, joint_vel=robot_state.qdot)
 
     def forward_step_command(self, action):
@@ -95,14 +99,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
-            q = future.result().q
-            qd = future.result().qdot
-            q_str = str(q).strip('[]')
-            qd_str = str(qd).strip('[]')
-            self.node.get_logger().info("Step, joint angles: %s" % q_str)
-            self.node.get_logger().info("Step, joint velocity: %s" % qd_str)
-            
-        robot_state = future.result()
+            robot_state = future.result()
+            _log_robot_state(robot_state)
+
         return MsjRobotState(joint_angle=robot_state.q, joint_vel=robot_state.qdot)
 
 
@@ -113,14 +112,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
-            q = future.result().q
-            qd = future.result().qdot
-            q_str = str(q).strip('[]')
-            qd_str = str(qd).strip('[]')
-            self.node.get_logger().info("Observation, joint angles: %s" % q_str)
-            self.node.get_logger().info("Observation, joint velocity: %s" % qd_str)
+            robot_state = future.result()
+            _log_robot_state(robot_state)
 
-
-
-        robot_state = future.result()
         return MsjRobotState(joint_angle=robot_state.q, joint_vel=robot_state.qdot)
