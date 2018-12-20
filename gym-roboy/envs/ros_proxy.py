@@ -82,7 +82,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
             robot_state = future.result()
-            _log_robot_state(robot_state)
+            self._log_robot_state(robot_state)
 
         return MsjRobotState(joint_angle=robot_state.q, joint_vel=robot_state.qdot)
 
@@ -100,7 +100,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
             robot_state = future.result()
-            _log_robot_state(robot_state)
+            self._log_robot_state(robot_state)
 
         return MsjRobotState(joint_angle=robot_state.q, joint_vel=robot_state.qdot)
 
@@ -113,6 +113,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
             robot_state = future.result()
-            _log_robot_state(robot_state)
+            self._log_robot_state(robot_state)
 
         return MsjRobotState(joint_angle=robot_state.q, joint_vel=robot_state.qdot)
