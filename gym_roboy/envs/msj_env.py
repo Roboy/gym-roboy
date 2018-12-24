@@ -2,13 +2,13 @@ import numpy as np
 
 import gym
 from gym import spaces
-from .ros_proxy import MsjROSProxy, MockMsjROSProxy, MsjRobotState
+from .ros_proxy import MsjROSProxy, MockMsjROSProxy, MsjRobotState, MsjROSBridgeProxy
 
 
 class MsjEnv(gym.GoalEnv):
     reward_range = (-10.88279628, 0)  # max l2 distance given action bounds (-pi, pi) and action dim (3 right now).
 
-    def __init__(self, ros_proxy: MsjROSProxy=MockMsjROSProxy(), seed: int = None):
+    def __init__(self, ros_proxy: MsjROSProxy=MsjROSBridgeProxy(), seed: int = None):
         self.seed(seed)
         self._ros_proxy = ros_proxy
         
