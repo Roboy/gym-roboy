@@ -2,20 +2,20 @@ import numpy as np
 
 import gym
 from gym import spaces
-from .ros_proxy import MsjROSProxy, MockMsjROSProxy, MsjRobotState
+from .ros_proxy import MsjROSProxy, MockMsjROSProxy, MsjRobotState, MsjROSBridgeProxy
 
 
 class MsjEnv(gym.GoalEnv):
-    reward_range = (-10.88279628, 0)  # max l2 distance given action bounds (-pi, pi) and action dim (3 right now).
+    #reward_range = (-10.88279628, 0)  # max l2 distance given action bounds (-pi, pi) and action dim (3 right now).
 
-    def __init__(self, ros_proxy: MsjROSProxy=MockMsjROSProxy(), seed: int = None):
+    def __init__(self, ros_proxy: MsjROSProxy=MsjROSBridgeProxy(), seed: int = None):
         self.seed(seed)
         self._ros_proxy = ros_proxy
 
         self._max_joint_angle = np.pi
         self._max_tendon_speed = 0.02  # cm/s
         self._set_new_goal()
-
+        self.reward_range = (-10.88279628, 0)  # max l2 distance given action bounds (-pi, pi) and action dim (3 right now).
         self.action_space = spaces.Box(
             low=-self._max_tendon_speed,
             high=self._max_tendon_speed,
@@ -36,6 +36,8 @@ class MsjEnv(gym.GoalEnv):
         info = {}
         reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
         done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
+        if self._goal_joint_angle is not None:
+            self._ros_proxy.forward_new_goal(self._goal_joint_angle)
         return obs, reward, done, info
 
     def _make_obs(self, robot_state: MsjRobotState):
@@ -65,9 +67,9 @@ class MsjEnv(gym.GoalEnv):
         if goal_joint_angle is not None:
             self._goal_joint_angle = goal_joint_angle
             return
-        new_joint_angle = np.random.random(self._ros_proxy.DIM_JOINT_ANGLE)
-        self._goal_joint_angle = np.clip(new_joint_angle, -self._max_joint_angle, self._max_joint_angle)
-        self._ros_proxy.forward_new_goal(self._goal_joint_angle)
+        new_joint_angle = self._ros_proxy.set_new_goal()
+        self._goal_joint_angle = new_joint_angle
+        self._ros_proxy.forward_new_goal(self._goal_joint_angle) #FIXME find the right transfrom to the robot's frame
 
     def _did_reach_goal(self, actual_joint_angle) -> bool:
         l2_distance = self._l2_distance(actual_joint_angle, self._goal_joint_angle)
