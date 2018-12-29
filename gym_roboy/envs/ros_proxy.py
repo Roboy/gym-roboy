@@ -4,6 +4,8 @@ from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
 from geometry_msgs.msg import PointStamped
+from std_msgs.msg import Float32
+
 
 
 class MsjRobotState:
@@ -72,7 +74,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.step_cli = self.node.create_client(GymStep, 'gym_step')
         self.reset_cli = self.node.create_client(GymReset, 'gym_reset')
         self.goal_cli = self.node.create_client(GymGoal, 'gym_goal')
-        self.new_goal_publisher = self.node.create_publisher(msg_type=PointStamped, topic="/gym_goal")
+        self.sphere_axis0 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis0/sphere_axis0/target")
+        self.sphere_axis1 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis1/sphere_axis1/target")
+        self.sphere_axis2 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis2/sphere_axis2/target")
 
     def _log_robot_state(self, robot_state):
         q_pos = robot_state.q
@@ -81,6 +85,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         qvel_str = str(q_vel).strip('[]')
         self.node.get_logger().info("joint angles: %s" % qpos_str)
         self.node.get_logger().info("joint velocity: %s" % qvel_str)
+
     def _check_service(self, srv):
         while not srv.wait_for_service(timeout_sec=1.0):
             self.node.get_logger().info('service not available, waiting...')
@@ -126,15 +131,16 @@ class MsjROSBridgeProxy(MsjROSProxy):
     def forward_new_goal(self, goal_joint_angle):
         assert len(goal_joint_angle) == 3
 
-        #FIXME find the right transform to the robot's frame
-        point = PointStamped()
-        point.header.frame_id = "/world"
-        point.point.x = goal_joint_angle[0]
-        point.point.y = goal_joint_angle[1]
-        point.point.z = goal_joint_angle[2]
+        msg0 = Float32()
+        msg1 = Float32()
+        msg2 = Float32()
+        msg0.data = goal_joint_angle[0]
+        msg1.data = goal_joint_angle[1]
+        msg2.data = goal_joint_angle[2]
 
-        self.node.get_logger().info("Publishing: " + str(point))
-        self.new_goal_publisher.publish(point)
+        self.sphere_axis0.publish(msg0)
+        self.sphere_axis1.publish(msg1)
+        self.sphere_axis2.publish(msg2)
 
     def set_new_goal(self):
         while self._check_service(self.goal_cli):
