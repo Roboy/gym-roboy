@@ -75,8 +75,13 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
             self.node.get_logger().info("result: %f" % future.result().q[1])
-        q = future.result()
-        return MsjRobotState(joint_angle=q.q, joint_vel=q.qdot)
+        res = future.result()
+        return self._make_robot_state(service_response=res)
+
+    @staticmethod
+    def _make_robot_state(service_response) -> MsjRobotState:
+        return MsjRobotState(joint_angle=service_response.q[3:],
+                             joint_vel=service_response.qdot[3:])
 
     def forward_step_command(self, action):
 
@@ -91,9 +96,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
         if future.result() is not None:
-            self.node.get_logger().info("result: %f" % future.result().q[1])
-        q = future.result()
-        return MsjRobotState(joint_angle=q.q, joint_vel=q.qdot)
+            self.node.get_logger().info(", ".join([str(e) for e in future.result().q]))
+        res = future.result()
+        return self._make_robot_state(res)
 
     def read_state(self):
         while not self.step_cli.wait_for_service(timeout_sec=1.0):
@@ -102,5 +107,5 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_cli.call_async(req)
         rclpy.spin_until_future_complete(self.node,future)
 
-        q = future.result()
-        return MsjRobotState(joint_angle=q.q, joint_vel=q.qdot)
+        res = future.result()
+        return self._make_robot_state(res)
