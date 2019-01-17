@@ -1,9 +1,9 @@
 import os
 
 REQUIRED_VARIABLES = [
-    "ROS2_WS",
+    "ROS2_INSTALL_WS",
     "ROS2_ROBOY_WS",
-    "CARDSFLOW_WS",
+    "ROS1_ROBOY_WS",
 ]
 
 
