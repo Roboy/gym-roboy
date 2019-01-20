@@ -1,9 +1,9 @@
 import numpy as np
 from itertools import combinations
 
-from .. import MsjEnv
+from .. import MsjEnv, MockMsjROSProxy
 
-env = MsjEnv()
+env = MsjEnv(ros_proxy=MockMsjROSProxy())
 RANDOM_ACTION = env.action_space.sample()
 ZERO_ACTION = np.zeros(len(RANDOM_ACTION))
 

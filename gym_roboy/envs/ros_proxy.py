@@ -57,26 +57,24 @@ class MockMsjROSProxy(MsjROSProxy):
 
 class MsjROSBridgeProxy(MsjROSProxy):
 
-    def __init__(self):
-        try:
+    _RCLPY_INITIALIZED = False
+
+    def __init__(self, timeout_secs: int = 2):
+        if not self._RCLPY_INITIALIZED:
             rclpy.init()
-        except:
-            pass
+            MsjROSBridgeProxy._RCLPY_INITIALIZED = True
+        self._timeout_secs = timeout_secs
         self.node = rclpy.create_node('gym_client')
-        self.step_cli = self.node.create_client(GymStep, 'gym_step')
-        self.reset_cli = self.node.create_client(GymReset, 'gym_reset')
-    
+        self.step_client = self.node.create_client(GymStep, 'gym_step')
+        self.reset_client = self.node.create_client(GymReset, 'gym_reset')
+        self._step_size = 0.1
+
     def forward_reset_command(self):
-        step_size = 1.0
-        req = GymStep.Request()
-        res = GymStep.Response()
-        req.step_size = step_size
-        future = self.reset_cli.call_async(req)
-        rclpy.spin_until_future_complete(self.node,future)
-        if future.result() is not None:
-            self.node.get_logger().info("result: %f" % future.result().q[1])
-        res = future.result()
-        return self._make_robot_state(service_response=res)
+        request = GymStep.Request()
+        request.step_size = self._step_size
+        future = self.reset_client.call_async(request)
+        self._wait_until_future_complete_or_timeout(future)
+        return self._make_robot_state(service_response=future.result())
 
     @staticmethod
     def _make_robot_state(service_response) -> MsjRobotState:
@@ -84,28 +82,20 @@ class MsjROSBridgeProxy(MsjROSProxy):
                              joint_vel=service_response.qdot[3:])
 
     def forward_step_command(self, action):
-
-        while not self.step_cli.wait_for_service(timeout_sec=1.0):
-            self.node.get_logger().info('service not available, waiting...')
-
-        step_size = 1.0
         req = GymStep.Request()
-        res = GymStep.Response()
         req.set_points = action
-        req.step_size = step_size
-        future = self.step_cli.call_async(req)
-        rclpy.spin_until_future_complete(self.node,future)
-        if future.result() is not None:
-            self.node.get_logger().info(", ".join([str(e) for e in future.result().q]))
-        res = future.result()
-        return self._make_robot_state(res)
+        req.step_size = self._step_size
+        future = self.step_client.call_async(req)
+        self._wait_until_future_complete_or_timeout(future)
+        return self._make_robot_state(future.result())
+
+    def _wait_until_future_complete_or_timeout(self, future):
+        if not self.step_client.wait_for_service(timeout_sec=self._timeout_secs):
+            raise TimeoutError("ROS communication timed out")
+        rclpy.spin_until_future_complete(self.node, future)
 
     def read_state(self):
-        while not self.step_cli.wait_for_service(timeout_sec=1.0):
-            self.node.get_logger().info('service not available, waiting...')
         req = GymStep.Request()
-        future = self.step_cli.call_async(req)
-        rclpy.spin_until_future_complete(self.node,future)
-
-        res = future.result()
-        return self._make_robot_state(res)
+        future = self.step_client.call_async(req)
+        self._wait_until_future_complete_or_timeout(future)
+        return self._make_robot_state(future.result())
