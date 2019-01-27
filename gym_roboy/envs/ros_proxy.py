@@ -7,14 +7,6 @@ from std_msgs.msg import Float32
 from .msj_robot_state import MsjRobotState
 
 
-class MsjRobotState:
-    def __init__(self, joint_angle, joint_vel):
-        assert len(joint_angle) == MsjROSProxy.DIM_JOINT_ANGLE
-        assert len(joint_vel) == MsjROSProxy.DIM_JOINT_ANGLE
-        self.joint_angle = np.array(joint_angle)
-        self.joint_vel = np.array(joint_vel)
-
-
 class MsjROSProxy:
     """
     This interface defines how the MsjEnv interacts with the Msj Robot.
@@ -93,20 +85,18 @@ class MsjROSBridgeProxy(MsjROSProxy):
         return MsjRobotState(joint_angle=service_response.q,
                              joint_vel=service_response.qdot)
 
-
     def forward_step_command(self, action):
         while self._check_service(self.step_client):
             req = GymStep.Request()
             req.set_points = action
             req.step_size = self._step_size
             future = self.step_client.call_async(req)
-            rclpy.spin_until_future_complete(self.node,future)
+            rclpy.spin_until_future_complete(self.node, future)
             res = future.result()
             if res is not None:
                 self._log_robot_state(res)
                 if not res.feasible:
                     return self.forward_reset_command()
-
 
     def _wait_until_future_complete_or_timeout(self, future):
         if not self.step_client.wait_for_service(timeout_sec=self._timeout_secs):
@@ -120,8 +110,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         return self._make_robot_state(future.result())
 
     def forward_new_goal(self, goal_joint_angle):
-        assert len(goal_joint_angle) == 3
-
+        assert len(goal_joint_angle) == MsjRobotState.DIM_JOINT_ANGLE
         msg0 = Float32()
         msg1 = Float32()
         msg2 = Float32()

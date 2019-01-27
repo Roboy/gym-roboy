@@ -38,8 +38,7 @@ class MsjEnv(gym.GoalEnv):
         info = {}
         reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
         done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
-        if self._goal_joint_angle is not None:
-            self._ros_proxy.forward_new_goal(self._goal_joint_angle)
+
         return obs, reward, done, info
 
     def _make_obs(self, robot_state: MsjRobotState):
