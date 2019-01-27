@@ -103,8 +103,8 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     @staticmethod
     def _make_robot_state(service_response) -> MsjRobotState:
-        return MsjRobotState(joint_angle=service_response.q[3:],
-                             joint_vel=service_response.qdot[3:])
+        return MsjRobotState(joint_angle=service_response.q,
+                             joint_vel=service_response.qdot)
 
     def forward_step_command(self, action):
         while self._check_service(self.step_cli):

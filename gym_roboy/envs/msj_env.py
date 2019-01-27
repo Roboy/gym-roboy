@@ -69,7 +69,7 @@ class MsjEnv(gym.GoalEnv):
             return
         new_joint_angle = self._ros_proxy.set_new_goal()
         self._goal_joint_angle = new_joint_angle
-        self._ros_proxy.forward_new_goal(self._goal_joint_angle) #FIXME find the right transfrom to the robot's frame
+        self._ros_proxy.forward_new_goal(self._goal_joint_angle)
 
     def _did_reach_goal(self, actual_joint_angle) -> bool:
         l2_distance = self._l2_distance(actual_joint_angle, self._goal_joint_angle)
