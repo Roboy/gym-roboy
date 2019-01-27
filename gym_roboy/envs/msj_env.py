@@ -2,7 +2,7 @@ import numpy as np
 
 import gym
 from gym import spaces
-from .ros_proxy import MsjROSProxy, MsjRobotState, MsjROSBridgeProxy
+from . import MsjROSProxy, MsjROSBridgeProxy, MsjRobotState
 
 
 def _l2_distance(joint_angle1, joint_angle2):
@@ -16,11 +16,11 @@ class MsjEnv(gym.GoalEnv):
     # TODO: joint velocities are not constrained to [-pi, pi], only angles.
     # 3 * DIM_JOINT_ANGLE from the observation = DIM_current_joint_velocity + DIM_current_joints + DIM_goal_joints
     observation_space = spaces.Box(-_max_joint_angle, _max_joint_angle,
-                                   shape=(3*MsjROSProxy.DIM_JOINT_ANGLE,), dtype='float32')
+                                   shape=(3*MsjRobotState.DIM_JOINT_ANGLE,), dtype='float32')
     action_space = spaces.Box(
         low=-_max_tendon_speed,
         high=_max_tendon_speed,
-        shape=(MsjROSProxy.DIM_ACTION,)
+        shape=(MsjRobotState.DIM_ACTION,)
         , dtype='float32'
     )
     reward_range = (-_l2_distance(observation_space.low, observation_space.high),
@@ -69,7 +69,7 @@ class MsjEnv(gym.GoalEnv):
         if goal_joint_angle is not None:
             self._goal_joint_angle = goal_joint_angle
             return
-        new_joint_angle = np.random.random(self._ros_proxy.DIM_JOINT_ANGLE)
+        new_joint_angle = np.random.random(MsjRobotState.DIM_JOINT_ANGLE)
         self._goal_joint_angle = np.clip(new_joint_angle, -self._max_joint_angle, self._max_joint_angle)
 
     def _did_reach_goal(self, actual_joint_angle) -> bool:
