@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from .. import MsjROSBridgeProxy
 
@@ -6,13 +7,16 @@ from .. import MsjROSBridgeProxy
 ros_bridge_proxy = MsjROSBridgeProxy()
 
 
+@pytest.mark.integration
 def test_msj_ros_bridge_proxy_reset():
     """reset function sets all joint angles to zero in simulation"""
+
     new_robot_state = ros_bridge_proxy.forward_reset_command()
     assert np.allclose([0, 0, 0], new_robot_state.joint_angle)
     assert np.allclose([0, 0, 0], new_robot_state.joint_vel)
 
 
+@pytest.mark.integration
 def test_msj_ros_bridge_proxy_step():
     """calling the step function changes the robot state"""
 
@@ -28,6 +32,7 @@ def test_msj_ros_bridge_proxy_step():
         assert (np.abs(x - y) > 0.00001 or np.abs(x - y) == 0)
 
 
+@pytest.mark.integration
 def test_msj_ros_bridge_proxy_read_state():
     """calling the read state function doesn't change the robot state"""
 

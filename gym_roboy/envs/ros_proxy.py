@@ -4,6 +4,7 @@ from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
 from std_msgs.msg import Float32
+from .msj_robot_state import MsjRobotState
 
 
 class MsjRobotState:
@@ -19,10 +20,6 @@ class MsjROSProxy:
     This interface defines how the MsjEnv interacts with the Msj Robot.
     One implementation will use the ROS1 service over ROS2 bridge.
     """
-
-    DIM_ACTION = 8
-    DIM_JOINT_ANGLE = 3
-
     def read_state(self) -> MsjRobotState:
         raise NotImplementedError
 
@@ -37,23 +34,19 @@ class MockMsjROSProxy(MsjROSProxy):
     """This implementation is a mock for unit testing purposes."""
 
     def __init__(self):
-        self._state = MsjRobotState(
-            joint_angle=np.random.random(self.DIM_JOINT_ANGLE),
-            joint_vel=np.random.random(self.DIM_JOINT_ANGLE),
-        )
+        self._state = MsjRobotState.new_random_state()
 
     def read_state(self) -> MsjRobotState:
         return self._state
 
     def forward_step_command(self, action) -> MsjRobotState:
-        assert len(action) == self.DIM_ACTION
-        return self._state
+        assert len(action) == MsjRobotState.DIM_ACTION
+        if np.allclose(action, 0):
+            return self._state
+        return MsjRobotState.new_random_state()
 
     def forward_reset_command(self) -> MsjRobotState:
-        self._state = MsjRobotState(
-            joint_angle=np.zeros(self.DIM_JOINT_ANGLE),
-            joint_vel=np.zeros(self.DIM_JOINT_ANGLE),
-        )
+        self._state = MsjRobotState.new_zero_state()
         return self._state
 
 

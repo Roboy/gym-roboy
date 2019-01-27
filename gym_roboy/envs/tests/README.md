@@ -1,1 +1,15 @@
-In order to run the test successfully, you need to source ROS2 (/ros2_install/install/setup.bash) and the ROS1-ROS2-bridge and CARDSFlow needs to be running.
+## Unit tests
+To run the tests, you need to source your ROS2_ROBOY_WS first.
+For unit tests, no running CARDSflow simulation is necessary.
+```bash
+python3.5 -m pytest --disable-warnings -rs -v
+```
+* `--disable-warnings ` to mute Tensorflow warnings.
+* `-rs` shows a report of skipped tests
+* `-v` for verbose
+### Integration tests
+If you want to run the integration tests, you will need a running CARDSflow simulation.
+In that case:
+```bash
+python3.5 -m pytest --disable-warnings -rs -v --run-integration
+```
