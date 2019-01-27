@@ -68,6 +68,10 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.step_client = self.node.create_client(GymStep, 'gym_step')
         self.reset_client = self.node.create_client(GymReset, 'gym_reset')
         self._step_size = 0.1
+        self.goal_cli = self.node.create_client(GymGoal, 'gym_goal')
+        self.sphere_axis0 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis0/sphere_axis0/target")
+        self.sphere_axis1 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis1/sphere_axis1/target")
+        self.sphere_axis2 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis2/sphere_axis2/target")
 
     def forward_reset_command(self):
         request = GymStep.Request()
@@ -78,8 +82,8 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     @staticmethod
     def _make_robot_state(service_response) -> MsjRobotState:
-        return MsjRobotState(joint_angle=service_response.q[3:],
-                             joint_vel=service_response.qdot[3:])
+        return MsjRobotState(joint_angle=service_response.q,
+                             joint_vel=service_response.qdot)
 
     def forward_step_command(self, action):
         req = GymStep.Request()
@@ -99,3 +103,28 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_client.call_async(req)
         self._wait_until_future_complete_or_timeout(future)
         return self._make_robot_state(future.result())
+
+    def forward_new_goal(self, goal_joint_angle):
+        assert len(goal_joint_angle) == 3
+
+        msg0 = Float32()
+        msg1 = Float32()
+        msg2 = Float32()
+        msg0.data = goal_joint_angle[0]
+        msg1.data = goal_joint_angle[1]
+        msg2.data = goal_joint_angle[2]
+
+        self.sphere_axis0.publish(msg0)
+        self.sphere_axis1.publish(msg1)
+        self.sphere_axis2.publish(msg2)
+
+    def set_new_goal(self):
+        while self._check_service(self.goal_cli):
+            req = GymGoal.Request()
+            future = self.goal_cli.call_async(req)
+            rclpy.spin_until_future_complete(self.node, future)
+            res = future.result()
+            if res is not None:
+                self.node.get_logger().info("feasible: " + str(res.q))
+            return res.q
+
