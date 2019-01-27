@@ -21,6 +21,9 @@ class MsjROSProxy:
     def forward_reset_command(self) -> MsjRobotState:
         raise NotImplementedError
 
+    def get_new_goal_joint_angles(self):
+        raise NotImplementedError
+
 
 class MockMsjROSProxy(MsjROSProxy):
     """This implementation is a mock for unit testing purposes."""
@@ -41,6 +44,9 @@ class MockMsjROSProxy(MsjROSProxy):
         self._state = MsjRobotState.new_zero_state()
         return self._state
 
+    def get_new_goal_joint_angles(self):
+        return MsjRobotState.new_random_state().joint_angle
+
 
 class MsjROSBridgeProxy(MsjROSProxy):
 
@@ -52,6 +58,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
         self._timeout_secs = timeout_secs
         self.node = rclpy.create_node('gym_client')
+        self.gymgoal = np.array
         self.step_client = self.node.create_client(GymStep, 'gym_step')
         self.reset_client = self.node.create_client(GymReset, 'gym_reset')
         self._step_size = 0.1
@@ -109,8 +116,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self._wait_until_future_complete_or_timeout(future)
         return self._make_robot_state(future.result())
 
-    def forward_new_goal(self, goal_joint_angle):
+    def _publish_new_goal_on_rviz(self, goal_joint_angle):
         assert len(goal_joint_angle) == MsjRobotState.DIM_JOINT_ANGLE
+
         msg0 = Float32()
         msg1 = Float32()
         msg2 = Float32()
@@ -122,7 +130,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.sphere_axis1.publish(msg1)
         self.sphere_axis2.publish(msg2)
 
-    def set_new_goal(self):
+    def get_new_goal_joint_angles(self):
         while self._check_service(self.goal_client):
             req = GymGoal.Request()
             future = self.goal_client.call_async(req)
@@ -130,5 +138,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
             res = future.result()
             if res is not None:
                 self.node.get_logger().info("feasible: " + str(res.q))
+                self._publish_new_goal_on_rviz(res.q)
             return res.q
 
