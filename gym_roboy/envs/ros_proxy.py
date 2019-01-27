@@ -7,14 +7,6 @@ from std_msgs.msg import Float32
 from .msj_robot_state import MsjRobotState
 
 
-class MsjRobotState:
-    def __init__(self, joint_angle, joint_vel):
-        assert len(joint_angle) == MsjROSProxy.DIM_JOINT_ANGLE
-        assert len(joint_vel) == MsjROSProxy.DIM_JOINT_ANGLE
-        self.joint_angle = np.array(joint_angle)
-        self.joint_vel = np.array(joint_vel)
-
-
 class MsjROSProxy:
     """
     This interface defines how the MsjEnv interacts with the Msj Robot.
@@ -27,6 +19,9 @@ class MsjROSProxy:
         raise NotImplementedError
 
     def forward_reset_command(self) -> MsjRobotState:
+        raise NotImplementedError
+
+    def get_new_goal_joint_angles(self):
         raise NotImplementedError
 
 
@@ -48,6 +43,9 @@ class MockMsjROSProxy(MsjROSProxy):
     def forward_reset_command(self) -> MsjRobotState:
         self._state = MsjRobotState.new_zero_state()
         return self._state
+
+    def get_new_goal_joint_angles(self):
+        return MsjRobotState.new_random_state().joint_angle
 
 
 class MsjROSBridgeProxy(MsjROSProxy):
@@ -119,7 +117,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self._wait_until_future_complete_or_timeout(future)
         return self._make_robot_state(future.result())
 
-    def forward_new_goal(self, goal_joint_angle):
+    def _forward_new_goal(self, goal_joint_angle):
         assert len(goal_joint_angle) == 3
 
         msg0 = Float32()
@@ -133,7 +131,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.sphere_axis1.publish(msg1)
         self.sphere_axis2.publish(msg2)
 
-    def set_new_goal(self):
+    def get_new_goal_joint_angles(self):
         while self._check_service(self.goal_client):
             req = GymGoal.Request()
             future = self.goal_client.call_async(req)
@@ -141,5 +139,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
             res = future.result()
             if res is not None:
                 self.node.get_logger().info("feasible: " + str(res.q))
+            self._forward_new_goal(res.q)
             return res.q
 
