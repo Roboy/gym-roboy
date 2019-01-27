@@ -75,6 +75,7 @@ class MsjEnv(gym.GoalEnv):
         self._goal_joint_angle = new_joint_angle
         self._ros_proxy.forward_new_goal(self._goal_joint_angle)
 
+
     def _did_reach_goal(self, actual_joint_angle) -> bool:
         l2_distance = _l2_distance(actual_joint_angle, self._goal_joint_angle)
         return bool(l2_distance < self._l2_distance_for_success) # bool for comparison to a numpy bool
