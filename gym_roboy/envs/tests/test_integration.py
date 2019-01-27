@@ -1,9 +1,9 @@
 import numpy as np
 from itertools import combinations
 
-from .. import MsjEnv, MsjROSBridgeProxy
+from .. import MsjEnv
 
-env = MsjEnv(MsjROSBridgeProxy())
+env = MsjEnv()
 RANDOM_ACTION = env.action_space.sample()
 ZERO_ACTION = np.zeros(len(RANDOM_ACTION))
 
@@ -47,7 +47,7 @@ def test_integration_reaching_goal_angle_delivers_maximum_reward():
 
 
 def test_integration_reaching_worst_angle_delivers_lowest_reward():
-    goal_joint_angle = np.array([np.pi]*3)
+    goal_joint_angle = np.array([np.pi] * 3)
     current_joint_angle = -goal_joint_angle
     expected_reward = -np.linalg.norm(current_joint_angle - goal_joint_angle, ord=2)
 
