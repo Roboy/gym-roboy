@@ -93,7 +93,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
                              joint_vel=service_response.qdot)
 
     def forward_step_command(self, action):
-        while self._check_service(self.step_client):
+        while self._wait_until_future_complete_or_timeout(self.step_client):
             req = GymStep.Request()
             req.set_points = action
             req.step_size = self._step_size
@@ -131,7 +131,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.sphere_axis2.publish(msg2)
 
     def get_new_goal_joint_angles(self):
-        while self._check_service(self.goal_client):
+        while self._wait_until_future_complete_or_timeout(self.goal_client):
             req = GymGoal.Request()
             future = self.goal_client.call_async(req)
             rclpy.spin_until_future_complete(self.node, future)
