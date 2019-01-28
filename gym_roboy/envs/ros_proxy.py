@@ -75,11 +75,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.node.get_logger().info("joint angles: %s" % qpos_str)
         self.node.get_logger().info("joint velocity: %s" % qvel_str)
 
-    def _check_service(self, srv):
-        while not srv.wait_for_service(timeout_sec=1.0):
-            self.node.get_logger().info('service not available, waiting...')
-        return True
-
     def forward_reset_command(self):
         request = GymStep.Request()
         request.step_size = self._step_size
