@@ -57,12 +57,13 @@ class MsjROSBridgeProxy(MsjROSProxy):
             rclpy.init()
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
         self._timeout_secs = timeout_secs
-        self.node = rclpy.create_node('gym_client')
-        self.gymgoal = np.array
+        self._step_size = 0.1
+
+        self.node = rclpy.create_node('gym_rosnode')
         self.step_client = self.node.create_client(GymStep, 'gym_step')
         self.reset_client = self.node.create_client(GymReset, 'gym_reset')
-        self._step_size = 0.1
         self.goal_client = self.node.create_client(GymGoal, 'gym_goal')
+
         self.sphere_axis0 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis0/sphere_axis0/target")
         self.sphere_axis1 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis1/sphere_axis1/target")
         self.sphere_axis2 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis2/sphere_axis2/target")
@@ -76,11 +77,12 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.node.get_logger().info("joint velocity: %s" % qvel_str)
 
     def forward_reset_command(self):
-        request = GymStep.Request()
-        request.step_size = self._step_size
-        future = self.reset_client.call_async(request)
-        self._wait_until_future_complete_or_timeout(future)
-        return self._make_robot_state(service_response=future.result())
+        while self._wait_until_future_complete_or_timeout(self.reset_client):
+            request = GymStep.Request()
+            request.step_size = self._step_size
+            future = self.reset_client.call_async(request)
+            rclpy.spin_until_future_complete(self.node, future)
+            return self._make_robot_state(service_response=future.result())
 
     @staticmethod
     def _make_robot_state(service_response) -> MsjRobotState:
@@ -100,16 +102,17 @@ class MsjROSBridgeProxy(MsjROSProxy):
                 if not res.feasible:
                     return self.forward_reset_command()
 
-    def _wait_until_future_complete_or_timeout(self, future):
-        if not self.step_client.wait_for_service(timeout_sec=self._timeout_secs):
+    def _wait_until_future_complete_or_timeout(self, client):
+        if not client.wait_for_service(timeout_sec=self._timeout_secs):
             raise TimeoutError("ROS communication timed out")
-        rclpy.spin_until_future_complete(self.node, future)
+        return True
 
     def read_state(self):
-        req = GymStep.Request()
-        future = self.step_client.call_async(req)
-        self._wait_until_future_complete_or_timeout(future)
-        return self._make_robot_state(future.result())
+        while self._wait_until_future_complete_or_timeout(self.step_client):
+            req = GymStep.Request()
+            future = self.step_client.call_async(req)
+            rclpy.spin_until_future_complete(self.node, future)
+            return self._make_robot_state(future.result())
 
     def _publish_new_goal_on_rviz(self, goal_joint_angle):
         assert len(goal_joint_angle) == MsjRobotState.DIM_JOINT_ANGLE
