@@ -101,6 +101,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
                 self._log_robot_state(res)
                 if not res.feasible:
                     return self.forward_reset_command()
+            print("look at me, i never quit!")
 
     def _wait_until_future_complete_or_timeout(self, client):
         if not client.wait_for_service(timeout_sec=self._timeout_secs):
