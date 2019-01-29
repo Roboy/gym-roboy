@@ -5,16 +5,18 @@ import pytest
 
 from .. import MsjEnv, MockMsjROSProxy
 
+constructors = [
+    lambda: MsjEnv(ros_proxy=MockMsjROSProxy()),
+    pytest.param(lambda: MsjEnv(), marks=pytest.mark.integration)
+]
+
 
 @pytest.fixture(
-    params=[
-        MsjEnv(ros_proxy=MockMsjROSProxy()),
-        pytest.param(MsjEnv(), marks=pytest.mark.integration)
-    ],
+    params=constructors,
     ids=["unit-test", "integration"]
 )
 def msj_env(request) -> MsjEnv:
-    return request.param
+    return request.param()
 
 
 def test_msj_env_step(msj_env):
@@ -48,9 +50,12 @@ def test_msj_env_new_goal_is_different_and_feasible(msj_env):
 def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env):
     obs = msj_env.reset()
     current_joint_angle = obs[0:3]
+    print("ok")
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
+    print("ok")
     zero_action = np.zeros(len(msj_env.action_space.low))
     _, reward, done, _ = msj_env.step(zero_action)
+    print("ok")
 
     assert done is True
     max_reward = msj_env.reward_range[1]

@@ -1,1 +1,0 @@
-echo "at the same time"

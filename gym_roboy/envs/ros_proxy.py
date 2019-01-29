@@ -102,7 +102,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
                 if not res.feasible:
                     return self.forward_reset_command()
                 return self._make_robot_state(res)
- 
+
 
     def _wait_until_future_complete_or_timeout(self, client):
         if not client.wait_for_service(timeout_sec=self._timeout_secs):
