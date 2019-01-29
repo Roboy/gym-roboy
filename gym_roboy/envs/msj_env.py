@@ -38,6 +38,7 @@ class MsjEnv(gym.GoalEnv):
         info = {}
         reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
         done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
+
         return obs, reward, done, info
 
     def _make_obs(self, robot_state: MsjRobotState):
@@ -69,9 +70,9 @@ class MsjEnv(gym.GoalEnv):
         if goal_joint_angle is not None:
             self._goal_joint_angle = goal_joint_angle
             return
-        new_joint_angle = np.random.random(MsjRobotState.DIM_JOINT_ANGLE)
-        self._goal_joint_angle = np.clip(new_joint_angle, -self._max_joint_angle, self._max_joint_angle)
-
+        new_joint_angle = self._ros_proxy.get_new_goal_joint_angles()
+        self._goal_joint_angle = new_joint_angle
+        
     def _did_reach_goal(self, actual_joint_angle) -> bool:
         l2_distance = _l2_distance(actual_joint_angle, self._goal_joint_angle)
         return bool(l2_distance < self._l2_distance_for_success) # bool for comparison to a numpy bool
