@@ -77,12 +77,12 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.node.get_logger().info("joint velocity: %s" % qvel_str)
 
     def forward_reset_command(self):
-        while self._wait_until_future_complete_or_timeout(self.reset_client):
-            request = GymStep.Request()
-            request.step_size = self._step_size
-            future = self.reset_client.call_async(request)
-            rclpy.spin_until_future_complete(self.node, future)
-            return self._make_robot_state(service_response=future.result())
+        self._wait_until_future_complete_or_timeout(self.reset_client)
+        request = GymStep.Request()
+        request.step_size = self._step_size
+        future = self.reset_client.call_async(request)
+        rclpy.spin_until_future_complete(self.node, future)
+        return self._make_robot_state(service_response=future.result())
 
     @staticmethod
     def _make_robot_state(service_response) -> MsjRobotState:
@@ -90,31 +90,28 @@ class MsjROSBridgeProxy(MsjROSProxy):
                              joint_vel=service_response.qdot)
 
     def forward_step_command(self, action):
-        while self._wait_until_future_complete_or_timeout(self.step_client):
-            req = GymStep.Request()
-            req.set_points = action
-            req.step_size = self._step_size
-            future = self.step_client.call_async(req)
-            rclpy.spin_until_future_complete(self.node, future)
-            res = future.result()
-            if res is not None:
-                self._log_robot_state(res)
-                if not res.feasible:
-                    return self.forward_reset_command()
-                return self._make_robot_state(res)
+        self._wait_until_future_complete_or_timeout(self.step_client)
+        request = GymStep.Request()
+        request.set_points = action
+        request.step_size = self._step_size
+        future = self.step_client.call_async(request)
+        rclpy.spin_until_future_complete(self.node, future)
+        res = future.result()
+        #self._log_robot_state(res)
+        if not res.feasible:
+            return self.forward_reset_command()
+        return self._make_robot_state(res)
 
-
-    def _wait_until_future_complete_or_timeout(self, client):
+    def _wait_until_future_complete_or_timeout(self, client) -> None:
         if not client.wait_for_service(timeout_sec=self._timeout_secs):
             raise TimeoutError("ROS communication timed out")
-        return True
 
     def read_state(self):
-        while self._wait_until_future_complete_or_timeout(self.step_client):
-            req = GymStep.Request()
-            future = self.step_client.call_async(req)
-            rclpy.spin_until_future_complete(self.node, future)
-            return self._make_robot_state(future.result())
+        self._wait_until_future_complete_or_timeout(self.step_client)
+        req = GymStep.Request()
+        future = self.step_client.call_async(req)
+        rclpy.spin_until_future_complete(self.node, future)
+        return self._make_robot_state(future.result())
 
     def _publish_new_goal_on_rviz(self, goal_joint_angle):
         assert len(goal_joint_angle) == MsjRobotState.DIM_JOINT_ANGLE
@@ -131,13 +128,13 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.sphere_axis2.publish(msg2)
 
     def get_new_goal_joint_angles(self):
-        while self._wait_until_future_complete_or_timeout(self.goal_client):
-            req = GymGoal.Request()
-            future = self.goal_client.call_async(req)
-            rclpy.spin_until_future_complete(self.node, future)
-            res = future.result()
-            if res is not None:
-                self.node.get_logger().info("feasible: " + str(res.q))
-                self._publish_new_goal_on_rviz(res.q)
-            return res.q
+        self._wait_until_future_complete_or_timeout(self.goal_client)
+        req = GymGoal.Request()
+        future = self.goal_client.call_async(req)
+        rclpy.spin_until_future_complete(self.node, future)
+        res = future.result()
+        if res is not None:
+            #self.node.get_logger().info("feasible: " + str(res.q))
+            self._publish_new_goal_on_rviz(res.q)
+        return res.q
 
