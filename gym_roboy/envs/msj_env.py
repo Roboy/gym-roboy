@@ -18,11 +18,14 @@ class MsjEnv(gym.GoalEnv):
     observation_space = spaces.Box(-_max_joint_angle, _max_joint_angle,
                                    shape=(3*MsjRobotState.DIM_JOINT_ANGLE,), dtype='float32')
     action_space = spaces.Box(
-        low=-_max_tendon_speed,
-        high=_max_tendon_speed,
+        low=-1,
+        high=1,
         shape=(MsjRobotState.DIM_ACTION,)
         , dtype='float32'
     )
+
+    print("The action space is: " + str(action_space))
+
     reward_range = (-_l2_distance(observation_space.low, observation_space.high),
                     -_l2_distance(observation_space.low, observation_space.low))
 
@@ -32,11 +35,14 @@ class MsjEnv(gym.GoalEnv):
         self._set_new_goal()
 
     def step(self, action):
-        action = np.clip(action, self.action_space.low, self.action_space.high).tolist()
+        action = self._max_tendon_speed * np.clip(action, self.action_space.low, self.action_space.high)
+        action = action.tolist()
+        print(action)
         new_state = self._ros_proxy.forward_step_command(action)
         obs = self._make_obs(robot_state=new_state)
         info = {}
         reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
+        print("step reward:", reward)
         done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
 
         return obs, reward, done, info
