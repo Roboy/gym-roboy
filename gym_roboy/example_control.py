@@ -1,34 +1,30 @@
-import gym
-import time
+import os
+
 from stable_baselines.common.policies import MlpPolicy
 
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO1
 
-from .envs import MsjEnv, MsjROSBridgeProxy
+from .envs import MsjEnv
 
 
-def our_env_constructor() -> gym.Env:
-    return MsjEnv(MsjROSBridgeProxy())
+MOUNT_DIR = "/root/develDeepAndReinforced/tensorboard_out/"
+MODEL_FILE = os.path.join(MOUNT_DIR, "model")
 
 
 def main():
     # The algorithms require a vectorized environment to run
-    env = DummyVecEnv([our_env_constructor])
+    env_constructor = MsjEnv
+    env = DummyVecEnv([env_constructor])
 
-    agent = PPO1(MlpPolicy, env, verbose=1)
+    if os.path.isfile(MODEL_FILE):
+        agent = PPO1.load(MODEL_FILE)
+    else:
+        agent = PPO1(MlpPolicy, env, verbose=1, tensorboard_log=MOUNT_DIR)
 
-    agent.learn(total_timesteps=1000)
-
-    for _ in range(100):
-        obs = env.reset()
-        done = False
-        while not done:
-            action, _ = agent.predict(obs)
-            obs, reward, done, info = env.step(action)
-            print("step reward:", reward)
-            time.sleep(0.01)
-        print("reached goal!")
+    while True:
+        agent.learn(total_timesteps=1000000)
+        agent.save(MODEL_FILE)
 
 
 if __name__ == '__main__':
