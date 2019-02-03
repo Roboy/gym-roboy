@@ -40,6 +40,9 @@ class MsjEnv(gym.GoalEnv):
         reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
         done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
 
+        if(done):
+            print("####################\nreached goal!\n####################")
+
         return obs, reward, done, info
 
     def _make_obs(self, robot_state: MsjRobotState):
@@ -80,4 +83,5 @@ class MsjEnv(gym.GoalEnv):
 
     @property
     def _l2_distance_for_success(self):
-        return _l2_distance(self.action_space.low, self.action_space.high) / 100  # 100 seems reasonable
+        return _l2_distance([self._max_joint_angle] * MsjRobotState.DIM_JOINT_ANGLE,
+                            [-self._max_joint_angle] * MsjRobotState.DIM_JOINT_ANGLE) / 100  # 100 seems reasonable
