@@ -58,7 +58,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
         self._timeout_secs = timeout_secs
         self._step_size = 0.1
-
+        self.i = 0
+        self._goal = np.array
+        self.robot_state = 0
         self.node = rclpy.create_node('gym_rosnode')
         self.step_client = self.node.create_client(GymStep, 'gym_step')
         self.reset_client = self.node.create_client(GymReset, 'gym_reset')
@@ -97,7 +99,14 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_client.call_async(request)
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
-        #self._log_robot_state(res)
+        self.robot_state = future.result()
+
+        #print("Goal: " + str(self._goal))
+        #self.i += 1
+        #if self.i % 100 == 0:
+            #self._log_robot_state(res)
+
+        #self._publish_new_goal_on_rviz(self._goal)
         if not res.feasible:
             return self.forward_reset_command()
         return self._make_robot_state(res)
@@ -128,13 +137,17 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.sphere_axis2.publish(msg2)
 
     def get_new_goal_joint_angles(self):
+        if self.robot_state != 0:
+            self._log_robot_state(self.robot_state)
         self._check_service_available_or_timeout(self.goal_client)
         req = GymGoal.Request()
         future = self.goal_client.call_async(req)
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
+
+        self._goal = res.q
         if res is not None:
-            #self.node.get_logger().info("feasible: " + str(res.q))
+            self.node.get_logger().info("feasible: " + str(res.q))
             self._publish_new_goal_on_rviz(res.q)
         return res.q
 
