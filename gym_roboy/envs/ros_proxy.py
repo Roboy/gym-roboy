@@ -1,3 +1,5 @@
+import time
+from datetime import datetime
 import numpy as np
 import rclpy
 from roboy_simulation_msgs.srv import GymStep
@@ -63,6 +65,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.step_client = self.node.create_client(GymStep, 'gym_step')
         self.reset_client = self.node.create_client(GymReset, 'gym_reset')
         self.goal_client = self.node.create_client(GymGoal, 'gym_goal')
+        self._last_time_gym_goal_service_was_called = datetime.now()
 
         self.sphere_axis0 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis0/sphere_axis0/target")
         self.sphere_axis1 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis1/sphere_axis1/target")
@@ -131,13 +134,22 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     def get_new_goal_joint_angles(self):
         #self.node.get_logger().info("Reached goal joint angles: " + str(self.read_state().joint_angle))
+        self._delay_if_necessary()
         self._check_service_available_or_timeout(self.goal_client)
         req = GymGoal.Request()
         future = self.goal_client.call_async(req)
+        self._last_time_gym_goal_service_was_called = datetime.now()
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
         if res is not None:
-            #self.node.get_logger().info("feasible: " + str(res.q))
+            self.node.get_logger().info("feasible: " + str(res.q))
             self._publish_new_goal_on_rviz(res.q)
         return res.q
 
+    def _delay_if_necessary(self) -> None:
+        """If the /gym_goal service gets called within a second it
+        delivers the same joint angle. Delaying is a quick fix."""
+        now = datetime.now()
+        seconds_since_last_service_call = (now - self._last_time_gym_goal_service_was_called).total_seconds()
+        if seconds_since_last_service_call <= 1.0:
+            time.sleep(1 - seconds_since_last_service_call)
