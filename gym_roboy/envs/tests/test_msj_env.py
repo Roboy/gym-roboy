@@ -37,32 +37,27 @@ def test_msj_env_reset(msj_env):
         assert np.allclose(obs1, obs2)
 
 
-@pytest.mark.skip(reason="Needs to update to current 'new_goal' mechanism")
-def test_msj_env_new_goal_is_different_and_feasible(msj_env):
-    for _ in range(10):
-        old_goal = msj_env._goal_joint_angle
+def test_msj_env_new_goal_is_different_and_feasible(msj_env: MsjEnv):
+    for _ in range(3):
+        old_goal = np.array(msj_env._goal_joint_angle)
         msj_env._set_new_goal()
         assert not np.allclose(old_goal, msj_env._goal_joint_angle)
-        assert all(-msj_env._max_joint_angle <= msj_env._goal_joint_angle)
-        assert all(msj_env._goal_joint_angle <= msj_env._max_joint_angle)
+        assert np.all(-msj_env._JOINT_ANGLE_BOUNDS <= msj_env._goal_joint_angle)
+        assert np.all(msj_env._goal_joint_angle <= msj_env._JOINT_ANGLE_BOUNDS)
 
 
 def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env):
     obs = msj_env.reset()
     current_joint_angle = obs[0:3]
-    print("ok")
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
-    print("ok")
     zero_action = np.zeros(len(msj_env.action_space.low))
     _, reward, done, _ = msj_env.step(zero_action)
-    print("ok")
 
     assert done is True
     max_reward = msj_env.reward_range[1]
     assert np.isclose(reward, max_reward)
 
 
-@pytest.mark.skip(reason="Do we still have a lowest possible reward?")
 def test_msj_env_reaching_worst_angle_delivers_lowest_reward(msj_env):
     goal_joint_angle = np.array([np.pi]*3)
     current_joint_angle = -goal_joint_angle
