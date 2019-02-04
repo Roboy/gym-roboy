@@ -1,5 +1,6 @@
 env/
 output/
+training_results/
 *.egg-info
 *.pyc
 .idea
