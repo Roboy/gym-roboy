@@ -99,7 +99,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         future = self.step_client.call_async(request)
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
-        
+
         if not res.feasible:
             return self.forward_reset_command()
         return self._make_robot_state(res)
@@ -137,7 +137,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
         if res is not None:
-            self.node.get_logger().info("feasible: " + str(res.q))
+            #self.node.get_logger().info("feasible: " + str(res.q))
             self._publish_new_goal_on_rviz(res.q)
         return res.q
 

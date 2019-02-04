@@ -83,4 +83,4 @@ class MsjEnv(gym.GoalEnv):
 
     @property
     def _l2_distance_for_success(self):
-        return _l2_distance(self.observation_space.low, self.observation_space.high) / 1000  # 100 seems reasonable
+        return _l2_distance(self.observation_space.low, self.observation_space.high) / 1000
