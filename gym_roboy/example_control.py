@@ -8,8 +8,9 @@ from stable_baselines import PPO1
 from .envs import MsjEnv
 
 
-MOUNT_DIR = "./training_results"
-MODEL_FILE = os.path.join(MOUNT_DIR, "model.pkl")
+RESULTS_DIR = "./training_results"
+assert not os.path.isdir(RESULTS_DIR), "Folder '{}' already exists".format(RESULTS_DIR)
+MODEL_FILE = "./model.pkl"
 
 
 def main():
@@ -18,10 +19,10 @@ def main():
     env = DummyVecEnv([env_constructor])
 
     if os.path.isfile(MODEL_FILE):
-        agent = PPO1.load(MODEL_FILE)
+        agent = PPO1.load(MODEL_FILE, tensorboard_log=RESULTS_DIR)
         agent.set_env(env)
     else:
-        agent = PPO1(MlpPolicy, env, verbose=1, tensorboard_log=MOUNT_DIR)
+        agent = PPO1(MlpPolicy, env, tensorboard_log=RESULTS_DIR)
 
     while True:
         agent.learn(total_timesteps=1000000)

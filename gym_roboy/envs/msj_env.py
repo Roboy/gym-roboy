@@ -24,14 +24,16 @@ class MsjEnv(gym.GoalEnv):
         shape=(MsjRobotState.DIM_ACTION,)
         , dtype='float32'
     )
+    _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
 
     def __init__(self, ros_proxy: MsjROSProxy=MsjROSBridgeProxy(), seed: int = None):
         self.seed(seed)
         self._ros_proxy = ros_proxy
         self._set_new_goal()
+        worst_state = MsjRobotState(joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._JOINT_VEL_BOUNDS)
         self.reward_range = (
-            self.compute_reward(-self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS, info={}),
-            self.compute_reward(self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS, info={})
+            self.compute_reward(current_state=worst_state, goal_state=self._goal_state),  # min-reward
+            self.compute_reward(current_state=self._goal_state, goal_state=self._goal_state)  # max-reward
         )
 
     def step(self, action):
@@ -40,8 +42,8 @@ class MsjEnv(gym.GoalEnv):
         new_state = self._ros_proxy.forward_step_command(action)
         obs = self._make_obs(robot_state=new_state)
         info = {}
-        reward = self.compute_reward(new_state.joint_angle, self._goal_joint_angle, info)
-        done = self._did_reach_goal(actual_joint_angle=new_state.joint_angle)
+        reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
+        done = self._did_reach_goal(current_state=new_state)
         if done:
             print("#############GOAL REACHED#############")
             self._set_new_goal()
@@ -63,27 +65,24 @@ class MsjEnv(gym.GoalEnv):
         pass
 
     @classmethod
-    def compute_reward(cls, achieved_goal, desired_goal, info):
-        assert len(achieved_goal) == MsjRobotState.DIM_JOINT_ANGLE, str(len(achieved_goal))
-        assert len(desired_goal) == MsjRobotState.DIM_JOINT_ANGLE, str(len(desired_goal))
-        current_joint_angle = achieved_goal
-        reward = -_l2_distance(current_joint_angle, desired_goal)
-        assert cls.reward_range[0] <= reward <= cls.reward_range[1]
-        return reward
+    def compute_reward(cls, current_state: MsjRobotState, goal_state: MsjRobotState, info=None):
+        reward = -_l2_distance(current_state.joint_angle, goal_state.joint_angle)
+        joint_vel_penalty = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
+        total_reward = reward - joint_vel_penalty
+        assert cls.reward_range[0] <= total_reward <= cls.reward_range[1]
+        return total_reward
 
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""
-        if goal_joint_angle is not None:
-            self._goal_joint_angle = goal_joint_angle
-            return
-        new_joint_angle = self._ros_proxy.get_new_goal_joint_angles()
-        assert len(new_joint_angle) == MsjRobotState.DIM_JOINT_ANGLE, str(len(new_joint_angle))
-        self._goal_joint_angle = new_joint_angle
-        
-    def _did_reach_goal(self, actual_joint_angle) -> bool:
-        l2_distance = _l2_distance(actual_joint_angle, self._goal_joint_angle)
+        self._goal_joint_angle = goal_joint_angle if goal_joint_angle is not None \
+            else self._ros_proxy.get_new_goal_joint_angles()
+        self._goal_state = MsjRobotState(joint_angle=self._goal_joint_angle,
+                                         joint_vel=self._GOAL_JOINT_VEL)
+
+    def _did_reach_goal(self, current_state: MsjRobotState) -> bool:
+        l2_distance = _l2_distance(current_state.joint_angle, self._goal_state.joint_angle)
         return bool(l2_distance < self._l2_distance_for_success) # bool for comparison to a numpy bool
 
     @property
     def _l2_distance_for_success(self):
-        return _l2_distance(-self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS) / 1000
+        return _l2_distance(-self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS) / 500
