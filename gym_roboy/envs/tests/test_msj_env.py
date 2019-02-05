@@ -58,12 +58,8 @@ def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env):
     assert np.isclose(reward, max_reward)
 
 
-def test_msj_env_reaching_worst_angle_delivers_lowest_reward(msj_env):
-    goal_joint_angle = np.array([np.pi]*3)
-    current_joint_angle = -goal_joint_angle
-    expected_reward = -np.linalg.norm(current_joint_angle - goal_joint_angle, ord=2)
-
-    assert np.isclose(msj_env.reward_range[0], expected_reward)
+def test_msj_env_worst_reward_is_unbounded(msj_env):
+    assert np.isclose(msj_env.reward_range[0], -np.inf)
 
 
 def test_msj_env_render_does_nothing(msj_env):

@@ -9,3 +9,4 @@ training_results/
 *~
 .pytest_cache/
 .ipynb_checkpoints
+*.pkl
