@@ -15,7 +15,7 @@ class MsjEnv(gym.GoalEnv):
 
     _max_tendon_speed = 0.02  # cm/s
     _JOINT_ANGLE_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.pi
-    _JOINT_VEL_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.inf
+    _JOINT_VEL_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.pi / 6  # 30 deg/sec
     observation_space = spaces.Box(
         low=-np.concatenate((_JOINT_ANGLE_BOUNDS, _JOINT_VEL_BOUNDS, _JOINT_ANGLE_BOUNDS)),
         high=np.concatenate((_JOINT_ANGLE_BOUNDS, _JOINT_VEL_BOUNDS, _JOINT_ANGLE_BOUNDS)),
@@ -28,7 +28,7 @@ class MsjEnv(gym.GoalEnv):
     )
     _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
 
-    def __init__(self, ros_proxy: MsjROSProxy=MsjROSBridgeProxy(),
+    def __init__(self, ros_proxy: MsjROSProxy = MsjROSBridgeProxy(),
                  seed: int = None, joint_vel_penalty: bool = True):
         self.seed(seed)
         self._ros_proxy = ros_proxy
@@ -72,6 +72,8 @@ class MsjEnv(gym.GoalEnv):
         pass
 
     def compute_reward(self, current_state: MsjRobotState, goal_state: MsjRobotState, info=None):
+        current_state = self._normalize_state(current_state)
+        goal_state = self._normalize_state(goal_state)
         reward = -_l2_distance(current_state.joint_angle, goal_state.joint_angle)
         if self._joint_vel_penalty:
             normed_joint_vel = np.linalg.norm(current_state.joint_vel)
@@ -95,3 +97,10 @@ class MsjEnv(gym.GoalEnv):
     @property
     def _l2_distance_for_success(self):
         return _l2_distance(-self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS) / 500
+
+    def _normalize_state(self, current_state: MsjRobotState):
+        return MsjRobotState(
+            joint_angle=current_state.joint_angle / self._JOINT_ANGLE_BOUNDS,
+            joint_vel=current_state.joint_vel / self._JOINT_VEL_BOUNDS,
+            is_feasible=current_state.is_feasible,
+        )
