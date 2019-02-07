@@ -6,7 +6,9 @@ from . import MsjROSProxy, MsjROSBridgeProxy, MsjRobotState
 
 
 def _l2_distance(joint_angle1, joint_angle2):
-    return np.linalg.norm(np.subtract(joint_angle1, joint_angle2), ord=2)
+    subtract = np.subtract(joint_angle1, joint_angle2)
+    subtract[np.isnan(subtract)] = 0  # np.inf - np.inf returns np.nan, but should be 0
+    return np.linalg.norm(subtract, ord=2)
 
 
 class MsjEnv(gym.GoalEnv):
@@ -26,14 +28,19 @@ class MsjEnv(gym.GoalEnv):
     )
     _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
 
-    def __init__(self, ros_proxy: MsjROSProxy=MsjROSBridgeProxy(), seed: int = None):
+    def __init__(self, ros_proxy: MsjROSProxy=MsjROSBridgeProxy(),
+                 seed: int = None, joint_vel_penalty: bool = True):
         self.seed(seed)
         self._ros_proxy = ros_proxy
         self._set_new_goal()
-        worst_state = MsjRobotState(joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._JOINT_VEL_BOUNDS)
+        some_state = MsjRobotState(
+            joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._JOINT_VEL_BOUNDS)
+        corresponding_worst_state = MsjRobotState(
+            joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS)
+        self._joint_vel_penalty = joint_vel_penalty
         self.reward_range = (
-            self.compute_reward(current_state=worst_state, goal_state=self._goal_state),  # min-reward
-            self.compute_reward(current_state=self._goal_state, goal_state=self._goal_state)  # max-reward
+            self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state),  # min-reward
+            self.compute_reward(current_state=some_state, goal_state=some_state)  # max-reward
         )
 
     def step(self, action):
@@ -64,13 +71,14 @@ class MsjEnv(gym.GoalEnv):
     def render(self, mode='human'):
         pass
 
-    @classmethod
-    def compute_reward(cls, current_state: MsjRobotState, goal_state: MsjRobotState, info=None):
+    def compute_reward(self, current_state: MsjRobotState, goal_state: MsjRobotState, info=None):
         reward = -_l2_distance(current_state.joint_angle, goal_state.joint_angle)
-        joint_vel_penalty = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
-        total_reward = reward - joint_vel_penalty
-        assert cls.reward_range[0] <= total_reward <= cls.reward_range[1]
-        return total_reward
+        if self._joint_vel_penalty:
+            joint_vel_penalty = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
+            reward -= joint_vel_penalty
+        assert self.reward_range[0] <= reward <= self.reward_range[1], \
+            "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
+        return reward
 
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""

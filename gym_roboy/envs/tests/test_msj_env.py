@@ -58,8 +58,14 @@ def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env):
     assert np.isclose(reward, max_reward)
 
 
-def test_msj_env_worst_reward_is_unbounded(msj_env):
-    assert np.isclose(msj_env.reward_range[0], -np.inf)
+def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
+    env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)
+    expected_worst_possible_reward = -np.linalg.norm(-MsjEnv._JOINT_ANGLE_BOUNDS - MsjEnv._JOINT_ANGLE_BOUNDS)
+    assert np.isclose(env.reward_range[0], expected_worst_possible_reward)
+
+    env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True)
+    expected_worst_possible_reward = -np.inf
+    assert np.isclose(env.reward_range[0], expected_worst_possible_reward)
 
 
 def test_msj_env_render_does_nothing(msj_env):
