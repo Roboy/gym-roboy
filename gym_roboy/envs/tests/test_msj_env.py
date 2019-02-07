@@ -68,7 +68,6 @@ def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
     assert np.isclose(env.reward_range[0], expected_worst_possible_reward)
 
 
-@pytest.mark.skip(reason="is not true :D")
 def test_msj_env_reward_is_lower_with_joint_vel_penalty():
     new_goal_state = MsjRobotState.new_random_state()
     new_goal_state.joint_vel = np.zeros_like(new_goal_state.joint_vel)
