@@ -34,9 +34,9 @@ class MsjEnv(gym.GoalEnv):
         self._ros_proxy = ros_proxy
         self._set_new_goal()
         some_state = MsjRobotState(
-            joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._GOAL_JOINT_VEL)
+            joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._GOAL_JOINT_VEL, is_feasible=True)
         corresponding_worst_state = MsjRobotState(
-            joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS)
+            joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS, is_feasible=True)
         self._joint_vel_penalty = joint_vel_penalty
         self.reward_range = (
             self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state),  # min-reward
@@ -84,7 +84,8 @@ class MsjEnv(gym.GoalEnv):
         self._goal_joint_angle = goal_joint_angle if goal_joint_angle is not None \
             else self._ros_proxy.get_new_goal_joint_angles()
         self._goal_state = MsjRobotState(joint_angle=self._goal_joint_angle,
-                                         joint_vel=self._GOAL_JOINT_VEL)
+                                         joint_vel=self._GOAL_JOINT_VEL,
+                                         is_feasible=True)
 
     def _did_reach_goal(self, current_state: MsjRobotState) -> bool:
         l2_distance = _l2_distance(current_state.joint_angle, self._goal_state.joint_angle)
