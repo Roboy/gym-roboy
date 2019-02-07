@@ -3,7 +3,7 @@ from itertools import combinations
 
 import pytest
 
-from .. import MsjEnv, MockMsjROSProxy
+from .. import MsjEnv, MockMsjROSProxy, MsjRobotState
 
 constructors = [
     lambda: MsjEnv(ros_proxy=MockMsjROSProxy()),
@@ -58,12 +58,31 @@ def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env):
     assert np.isclose(reward, max_reward)
 
 
-def test_msj_env_reaching_worst_angle_delivers_lowest_reward(msj_env):
-    goal_joint_angle = np.array([np.pi]*3)
-    current_joint_angle = -goal_joint_angle
-    expected_reward = -np.linalg.norm(current_joint_angle - goal_joint_angle, ord=2)
+def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
+    env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)
+    expected_worst_possible_reward = -np.linalg.norm(-MsjEnv._JOINT_ANGLE_BOUNDS - MsjEnv._JOINT_ANGLE_BOUNDS)
+    assert np.isclose(env.reward_range[0], expected_worst_possible_reward)
 
-    assert np.isclose(msj_env.reward_range[0], expected_reward)
+    env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True)
+    expected_worst_possible_reward = -np.inf
+    assert np.isclose(env.reward_range[0], expected_worst_possible_reward)
+
+
+def test_msj_env_reward_is_lower_with_joint_vel_penalty():
+    new_goal_joint_angle = MsjRobotState.new_random_state().joint_angle
+    some_action = MsjEnv.action_space.sample()
+
+    env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)
+    env.reset()
+    env._set_new_goal(goal_joint_angle=new_goal_joint_angle)
+    _, reward_with_no_joint_vel_penalty, _, _ = env.step(action=some_action)
+
+    env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True)
+    env.reset()
+    env._set_new_goal(goal_joint_angle=new_goal_joint_angle)
+    _, reward_with_joint_vel_penalty, _, _ = env.step(action=some_action)
+
+    assert reward_with_no_joint_vel_penalty > reward_with_joint_vel_penalty
 
 
 def test_msj_env_render_does_nothing(msj_env):

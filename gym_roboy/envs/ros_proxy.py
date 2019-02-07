@@ -151,5 +151,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         delivers the same joint angle. Delaying is a quick fix."""
         now = datetime.now()
         seconds_since_last_service_call = (now - self._last_time_gym_goal_service_was_called).total_seconds()
-        if seconds_since_last_service_call <= 1.0:
-            time.sleep(1 - seconds_since_last_service_call)
+        min_seconds_between_calls = 1.1
+        if seconds_since_last_service_call <= min_seconds_between_calls:
+            time.sleep(min_seconds_between_calls - seconds_since_last_service_call)
