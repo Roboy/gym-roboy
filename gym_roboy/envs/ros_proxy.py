@@ -1,11 +1,15 @@
 import time
 from datetime import datetime
+from typing import List
+
 import numpy as np
 import rclpy
 from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
 from std_msgs.msg import Float32
+from typeguard import typechecked
+
 from .msj_robot_state import MsjRobotState
 
 
@@ -89,10 +93,15 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     @staticmethod
     def _make_robot_state(service_response) -> MsjRobotState:
-        return MsjRobotState(joint_angle=service_response.q,
-                             joint_vel=service_response.qdot)
+        feasible = service_response.feasible if hasattr(service_response, "feasible") else True
+        return MsjRobotState(
+            joint_angle=service_response.q,
+            joint_vel=service_response.qdot,
+            is_feasible=feasible,
+        )
 
-    def forward_step_command(self, action):
+    @typechecked
+    def forward_step_command(self, action: List[float]):
         self._check_service_available_or_timeout(self.step_client)
 
         request = GymStep.Request()
@@ -103,8 +112,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
 
-        if not res.feasible:
-            return self.forward_reset_command()
         return self._make_robot_state(res)
 
     def _check_service_available_or_timeout(self, client) -> None:
