@@ -3,6 +3,7 @@ from itertools import combinations
 import numpy as np
 import pytest
 
+from gym_roboy.envs import MsjEnv, MsjRobotState
 from .. import MsjROSBridgeProxy
 
 
@@ -50,3 +51,18 @@ def test_msj_ros_bridge_proxy_get_new_goal_joint_angles_results_are_different():
     different_joint_angles = [ros_bridge_proxy.get_new_goal_joint_angles() for _ in range(5)]
     for joint_angle1, joint_angle2 in combinations(different_joint_angles, 2):
         assert not np.allclose(joint_angle1, joint_angle2)
+
+
+@pytest.mark.integration
+def test_msj_env_stepping_on_the_boundary_does_not_reset():
+    strong_action = [MsjEnv._max_tendon_speed]*4 +[0.0]*(MsjRobotState.DIM_ACTION-4)
+    ros_bridge_proxy.forward_reset_command = lambda: pytest.fail("should not call this")
+
+    for _ in range(1000):
+        robot_state = ros_bridge_proxy.forward_step_command(action=strong_action)
+        if not robot_state.is_feasible:
+            break
+
+    assert not robot_state.is_feasible
+    robot_state = ros_bridge_proxy.forward_step_command(action=strong_action)
+    assert not robot_state.is_feasible
