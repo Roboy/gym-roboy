@@ -74,7 +74,8 @@ class MsjEnv(gym.GoalEnv):
     def compute_reward(self, current_state: MsjRobotState, goal_state: MsjRobotState, info=None):
         reward = -_l2_distance(current_state.joint_angle, goal_state.joint_angle)
         if self._joint_vel_penalty:
-            reward = np.linalg.norm(current_state.joint_vel)*(reward - np.exp(reward))
+            normed_joint_vel = np.linalg.norm(current_state.joint_vel)
+            reward = (normed_joint_vel+1) * (reward-np.exp(reward))
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
         return reward
