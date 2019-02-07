@@ -75,7 +75,7 @@ class MsjEnv(gym.GoalEnv):
         reward = -_l2_distance(current_state.joint_angle, goal_state.joint_angle)
         if self._joint_vel_penalty:
             joint_vel_penalty = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
-            reward -= joint_vel_penalty
+            reward -= np.exp(joint_vel_penalty)
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
         return reward
