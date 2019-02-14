@@ -98,6 +98,11 @@ def test_msj_env_reward_is_lower_with_joint_vel_penalty():
 
     assert reward_with_no_joint_vel_penalty > reward_with_joint_vel_penalty
 
+def test_msj_env_reward_is_positive_when_done_is_true(msj_env: MsjEnv):
+    new_goal_state = MsjRobotState.new_random_state()
+    reward = msj_env.compute_reward()
+
+
 
 def test_msj_env_render_does_nothing(msj_env):
     msj_env.render()

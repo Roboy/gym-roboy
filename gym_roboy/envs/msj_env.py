@@ -72,6 +72,7 @@ class MsjEnv(gym.GoalEnv):
         done = self._did_complete_successfully(current_state=new_state)
         if done:
             print("#############GOAL REACHED#############")
+
             self._set_new_goal()
 
         return obs, reward, done, info
@@ -102,8 +103,13 @@ class MsjEnv(gym.GoalEnv):
             reward = (normed_joint_vel+1) * (reward-np.exp(reward))
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
+
         if not current_state.is_feasible:
             reward -= abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
+
+        if self._did_complete_successfully(current_state=current_state):
+            reward += 10
+
         return reward
 
     def _set_new_goal(self, goal_joint_angle=None):
