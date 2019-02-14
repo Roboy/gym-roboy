@@ -13,7 +13,9 @@ def _l2_distance(joint_angle1, joint_angle2):
 
 class MsjEnv(gym.GoalEnv):
 
-    _max_tendon_speed = 0.02  # cm/s
+    _MAX_TENDON_VEL = 0.02  # cm/s
+    _MAX_TENDON_VEL_FOR_SUCCESS = _MAX_TENDON_VEL / 100  # fraction not yet tuned
+
     _JOINT_ANGLE_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.pi
     _JOINT_VEL_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.pi / 6  # 30 deg/sec
     observation_space = spaces.Box(
@@ -44,13 +46,13 @@ class MsjEnv(gym.GoalEnv):
         )
 
     def step(self, action):
-        action = self._max_tendon_speed * np.clip(action, self.action_space.low, self.action_space.high)
-        action = action.tolist()
+        assert self.action_space.contains(action)
+        action = np.multiply(self._MAX_TENDON_VEL, action).tolist()
         new_state = self._ros_proxy.forward_step_command(action)
         obs = self._make_obs(robot_state=new_state)
         info = {}
         reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
-        done = self._did_reach_goal(current_state=new_state)
+        done = self._did_complete_successfully(current_state=new_state)
         if done:
             print("#############GOAL REACHED#############")
             self._set_new_goal()
@@ -90,11 +92,12 @@ class MsjEnv(gym.GoalEnv):
                                          joint_vel=self._GOAL_JOINT_VEL,
                                          is_feasible=True)
 
-    def _did_reach_goal(self, current_state: MsjRobotState) -> bool:
+    def _did_complete_successfully(self, current_state: MsjRobotState) -> bool:
         l2_distance = _l2_distance(current_state.joint_angle, self._goal_state.joint_angle)
-        return bool(l2_distance < self._l2_distance_for_success) # bool for comparison to a numpy bool
+        is_close = bool(l2_distance < self._l2_distance_for_success())  # cast from numpy.bool to bool
+        is_moving_slow = all(current_state.joint_vel < self._MAX_TENDON_VEL_FOR_SUCCESS)
+        return is_close and is_moving_slow
 
-    @property
     def _l2_distance_for_success(self):
         return _l2_distance(-self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS) / 500
 

@@ -7,13 +7,14 @@ from .. import MsjEnv, MockMsjROSProxy, MsjRobotState
 
 constructors = [
     lambda: MsjEnv(ros_proxy=MockMsjROSProxy()),
+    lambda: MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False),
     pytest.param(lambda: MsjEnv(), marks=pytest.mark.integration)
 ]
 
 
 @pytest.fixture(
     params=constructors,
-    ids=["unit-test", "integration"]
+    ids=["unit-test-default", "unit-test-no-joint-vel-penalty", "integration"]
 )
 def msj_env(request) -> MsjEnv:
     return request.param()
@@ -23,7 +24,7 @@ def test_msj_env_step(msj_env):
     obs, reward, done, _ = msj_env.step(msj_env.action_space.sample())
     assert isinstance(obs, np.ndarray)
     assert isinstance(reward, float)
-    assert isinstance(done, bool)
+    assert isinstance(done, bool), str(type(done))
 
 
 def test_msj_env_reset(msj_env):
@@ -46,16 +47,26 @@ def test_msj_env_new_goal_is_different_and_feasible(msj_env: MsjEnv):
         assert np.all(msj_env._goal_joint_angle <= msj_env._JOINT_ANGLE_BOUNDS)
 
 
-def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env):
+def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
     obs = msj_env.reset()
     current_joint_angle = obs[0:3]
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
     zero_action = np.zeros(len(msj_env.action_space.low))
     _, reward, done, _ = msj_env.step(zero_action)
 
-    assert done is True
     max_reward = msj_env.reward_range[1]
     assert np.isclose(reward, max_reward)
+
+
+def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(msj_env: MsjEnv):
+    obs = msj_env.reset()
+    current_joint_angle = obs[0:3]
+    msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
+
+    strong_action = msj_env.action_space.high
+    _, _, done, _ = msj_env.step(strong_action)
+
+    assert not done
 
 
 def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
