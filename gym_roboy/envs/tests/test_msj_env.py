@@ -71,7 +71,8 @@ def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(
 
 def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
     env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)
-    worst_possible_reward_from_angles = -np.linalg.norm(2*np.ones_like(MsjEnv._JOINT_ANGLE_BOUNDS))
+    largest_distance = np.linalg.norm(2 * np.ones_like(MsjEnv._JOINT_ANGLE_BOUNDS))
+    worst_possible_reward_from_angles = -largest_distance - abs(MsjEnv._PENALTY_FOR_TOUCHING_BOUNDARY)
     assert np.isclose(env.reward_range[0], worst_possible_reward_from_angles)
 
     env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True)
