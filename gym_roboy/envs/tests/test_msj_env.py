@@ -21,6 +21,7 @@ def msj_env(request) -> MsjEnv:
 
 
 def test_msj_env_step(msj_env):
+    msj_env.reset()
     obs, reward, done, _ = msj_env.step(msj_env.action_space.sample())
     assert isinstance(obs, np.ndarray)
     assert isinstance(reward, float)
@@ -63,10 +64,9 @@ def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(
     current_joint_angle = obs[0:3]
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
 
-    strong_action = msj_env.action_space.high
-    _, _, done, _ = msj_env.step(strong_action)
+    msj_env._last_state.joint_vel = msj_env._JOINT_VEL_BOUNDS
 
-    assert not done
+    assert not msj_env._did_complete_successfully(current_state=msj_env._last_state)
 
 
 def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
