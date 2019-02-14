@@ -32,6 +32,7 @@ class MsjEnv(gym.GoalEnv):
         , dtype='float32'
     )
     _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
+    _PENALTY_FOR_TOUCHING_BOUNDARY = 1
 
     def __init__(self, ros_proxy: MsjROSProxy = MsjROSBridgeProxy(),
                  seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = True):
@@ -41,7 +42,7 @@ class MsjEnv(gym.GoalEnv):
         some_state = MsjRobotState(
             joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._GOAL_JOINT_VEL, is_feasible=True)
         corresponding_worst_state = MsjRobotState(
-            joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS, is_feasible=True)
+            joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS, is_feasible=False)
         self._joint_vel_penalty = joint_vel_penalty
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
         self.reward_range = (
@@ -101,6 +102,8 @@ class MsjEnv(gym.GoalEnv):
             reward = (normed_joint_vel+1) * (reward-np.exp(reward))
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
+        if not current_state.is_feasible:
+            reward -= abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
         return reward
 
     def _set_new_goal(self, goal_joint_angle=None):
