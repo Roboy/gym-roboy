@@ -55,7 +55,7 @@ def test_msj_ros_bridge_proxy_get_new_goal_joint_angles_results_are_different():
 
 @pytest.mark.integration
 def test_msj_env_stepping_on_the_boundary_does_not_reset():
-    strong_action = [MsjEnv._max_tendon_speed]*4 +[0.0]*(MsjRobotState.DIM_ACTION-4)
+    strong_action = [MsjEnv._MAX_TENDON_VEL]*4 + [0.0]*(MsjRobotState.DIM_ACTION-4)
     ros_bridge_proxy.forward_reset_command = lambda: pytest.fail("should not call this")
 
     for _ in range(1000):
