@@ -3,12 +3,12 @@ from itertools import combinations
 
 import pytest
 
-from .. import MsjEnv, MockMsjROSProxy, MsjRobotState
+from .. import MsjEnv, MockMsjROSProxy, MsjRobotState, MsjROSBridgeProxy
 
 constructors = [
-    lambda: MsjEnv(ros_proxy=MockMsjROSProxy()),
+    lambda: MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True),
     lambda: MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False),
-    pytest.param(lambda: MsjEnv(), marks=pytest.mark.integration)
+    pytest.param(lambda: MsjEnv(ros_proxy=MsjROSBridgeProxy(), joint_vel_penalty=False), marks=pytest.mark.integration)
 ]
 
 
