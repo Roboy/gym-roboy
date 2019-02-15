@@ -95,11 +95,11 @@ class MsjEnv(gym.GoalEnv):
 
         current_state = self._normalize_state(current_state)
         goal_state = self._normalize_state(goal_state)
-        reward = -_l2_distance(current_state.joint_angle, goal_state.joint_angle)
+        reward = -np.exp(_l2_distance(current_state.joint_angle, goal_state.joint_angle))
 
         if self._joint_vel_penalty:
-            normed_joint_vel = np.linalg.norm(current_state.joint_vel)
-            reward = (normed_joint_vel+1) * (reward-np.exp(reward))
+            joint_vel_l2_distance = np.linalg.norm(current_state.joint_vel - goal_state.joint_vel)
+            reward = (joint_vel_l2_distance+1) * (reward-np.exp(reward))
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
         if not current_state.is_feasible:
