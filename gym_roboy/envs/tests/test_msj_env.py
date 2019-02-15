@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import numpy as np
 from itertools import combinations
 
@@ -72,7 +74,7 @@ def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(
 def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
     env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)
     largest_distance = np.linalg.norm(2 * np.ones_like(MsjEnv._JOINT_ANGLE_BOUNDS))
-    worst_possible_reward_from_angles = -largest_distance - abs(MsjEnv._PENALTY_FOR_TOUCHING_BOUNDARY)
+    worst_possible_reward_from_angles = -np.exp(largest_distance) - abs(MsjEnv._PENALTY_FOR_TOUCHING_BOUNDARY)
     assert np.isclose(env.reward_range[0], worst_possible_reward_from_angles)
 
     env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True)
@@ -101,3 +103,42 @@ def test_msj_env_reward_is_lower_with_joint_vel_penalty():
 
 def test_msj_env_render_does_nothing(msj_env):
     msj_env.render()
+
+
+@pytest.mark.parametrize(
+    "env",
+    [MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True),
+     MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)],
+    ids=["with joint_vel penalty", "no joint_vel penalty"]
+)
+def test_msj_env_reward_monotonously_improves_during_approach(env: MsjEnv):
+    """
+    For any random starting state, if we approach the goal at every
+    step, the reward should strictly improve.
+
+    This tests catches mistakes like reaching optimality by not moving.
+    """
+    np.random.seed(0)
+    env.seed(0)
+
+    num_starting_states = 40  # roughly covers many points in the space
+    num_steps = 7  # distance to goal halves at every step
+
+    goal_state = MsjRobotState.new_random_zero_vel_state()
+
+    starting_states = [MsjRobotState.new_random_state() for _ in range(num_starting_states)]
+    starting_states.append(MsjRobotState.new_random_zero_vel_state())
+    if env._joint_vel_penalty:
+        starting_states.append(MsjRobotState.new_random_zero_angle_state())
+
+    for current_state in starting_states:
+        sequence_of_rewards = []
+        for _ in range(num_steps):
+            reward = env.compute_reward(current_state=current_state, goal_state=goal_state)
+            sequence_of_rewards.append(reward)
+            current_state = MsjRobotState.interpolate(current_state, goal_state)
+        assert _strictly_increasing(sequence_of_rewards)
+
+
+def _strictly_increasing(sequence: Sequence[float]):
+    return all(x < y for x, y in zip(sequence, sequence[1:]))

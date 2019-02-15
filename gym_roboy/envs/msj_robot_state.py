@@ -26,3 +26,22 @@ class MsjRobotState:
         return cls(joint_angle=np.zeros(cls.DIM_JOINT_ANGLE),
                    joint_vel=np.zeros(cls.DIM_JOINT_ANGLE),
                    is_feasible=True)
+
+    @classmethod
+    def new_random_zero_vel_state(cls):
+        return cls(joint_angle=np.random.random(cls.DIM_JOINT_ANGLE),
+                   joint_vel=np.zeros(cls.DIM_JOINT_ANGLE),
+                   is_feasible=True)
+
+    @classmethod
+    def new_random_zero_angle_state(cls):
+        return cls(joint_angle=np.zeros(cls.DIM_JOINT_ANGLE),
+                   joint_vel=np.random.random(cls.DIM_JOINT_ANGLE),
+                   is_feasible=True)
+
+    @classmethod
+    def interpolate(cls, state1, state2):
+        assert isinstance(state1, cls) and isinstance(state2, cls)
+        return cls(joint_angle=(state1.joint_angle + state2.joint_angle) / 2,
+                   joint_vel=(state1.joint_vel + state2.joint_vel) / 2,
+                   is_feasible=state1.is_feasible and state2.is_feasible)
