@@ -114,7 +114,9 @@ def test_msj_env_render_does_nothing(msj_env):
 def test_msj_env_reward_monotonously_improves_during_approach(env: MsjEnv):
     """
     For any random starting state, if we approach the goal at every
-    step, the reward should strictly improve.
+    step, the reward should strictly improve. This is like computing
+    the numerical gradient dr/dq and checking that it is positive as
+    the state approaches the goal state.
 
     This tests catches mistakes like reaching optimality by not moving.
     """
@@ -136,7 +138,7 @@ def test_msj_env_reward_monotonously_improves_during_approach(env: MsjEnv):
         for _ in range(num_steps):
             reward = env.compute_reward(current_state=current_state, goal_state=goal_state)
             sequence_of_rewards.append(reward)
-            current_state = MsjRobotState.interpolate(current_state, goal_state)
+            current_state = MsjRobotState.interpolate(current_state, goal_state)  # cut distance by half
         assert _strictly_increasing(sequence_of_rewards)
 
 
