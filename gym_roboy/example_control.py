@@ -1,9 +1,7 @@
 import os
 
-from stable_baselines.common.policies import MlpPolicy
-
 from stable_baselines.common.vec_env import DummyVecEnv
-from stable_baselines import PPO1
+from stable_baselines import PPO2
 
 from .envs import MsjEnv
 
@@ -19,10 +17,10 @@ def main():
     env = DummyVecEnv([env_constructor])
 
     if os.path.isfile(MODEL_FILE):
-        agent = PPO1.load(MODEL_FILE, tensorboard_log=RESULTS_DIR)
+        agent = PPO2.load(MODEL_FILE, tensorboard_log=RESULTS_DIR)
         agent.set_env(env)
     else:
-        agent = PPO1(MlpPolicy, env, tensorboard_log=RESULTS_DIR)
+        agent = PPO2("MlpPolicy", env, tensorboard_log=RESULTS_DIR)
 
     while True:
         agent.learn(total_timesteps=1000000)
