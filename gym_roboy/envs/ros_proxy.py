@@ -71,10 +71,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.goal_client = self.node.create_client(GymGoal, 'gym_goal')
         self._last_time_gym_goal_service_was_called = datetime.now()
 
-        self.sphere_axis0 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis0/sphere_axis0/target")
-        self.sphere_axis1 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis1/sphere_axis1/target")
-        self.sphere_axis2 = self.node.create_publisher(msg_type=Float32, topic="/sphere_axis2/sphere_axis2/target")
-
     def _log_robot_state(self, robot_state):
         q_pos = robot_state.q
         q_vel = robot_state.qdot
@@ -125,20 +121,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node, future)
         return self._make_robot_state(future.result())
 
-    def _publish_new_goal_on_rviz(self, goal_joint_angle):
-        assert len(goal_joint_angle) == MsjRobotState.DIM_JOINT_ANGLE
-
-        msg0 = Float32()
-        msg1 = Float32()
-        msg2 = Float32()
-        msg0.data = goal_joint_angle[0]
-        msg1.data = goal_joint_angle[1]
-        msg2.data = goal_joint_angle[2]
-
-        self.sphere_axis0.publish(msg0)
-        self.sphere_axis1.publish(msg1)
-        self.sphere_axis2.publish(msg2)
-
     def get_new_goal_joint_angles(self):
         #self.node.get_logger().info("Reached goal joint angles: " + str(self.read_state().joint_angle))
         self._delay_if_necessary()
@@ -150,7 +132,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         res = future.result()
         if res is not None:
             self.node.get_logger().info("feasible: " + str(res.q))
-            self._publish_new_goal_on_rviz(res.q)
         return res.q
 
     def _delay_if_necessary(self) -> None:
