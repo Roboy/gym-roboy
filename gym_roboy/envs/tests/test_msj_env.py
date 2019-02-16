@@ -129,9 +129,13 @@ def test_msj_env_reward_monotonously_improves_during_approach(env: MsjEnv):
     goal_state = MsjRobotState.new_random_zero_vel_state()
 
     starting_states = [MsjRobotState.new_random_state() for _ in range(num_starting_states)]
-    starting_states.append(MsjRobotState.new_random_zero_vel_state())
+
+    # special cases
+    state_with_improvable_angles = MsjRobotState.new_random_zero_vel_state()
+    starting_states.append(state_with_improvable_angles)
     if env._joint_vel_penalty:
-        starting_states.append(MsjRobotState.new_random_zero_angle_state())
+        state_with_improvable_vels = MsjRobotState.new_random_zero_angle_state()
+        starting_states.append(state_with_improvable_vels)
 
     for current_state in starting_states:
         sequence_of_rewards = []
