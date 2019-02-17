@@ -34,10 +34,11 @@ class MsjEnv(gym.GoalEnv):
     _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
     _PENALTY_FOR_TOUCHING_BOUNDARY = 1
 
-    def __init__(self, ros_proxy: MsjROSProxy = MsjROSBridgeProxy(),
-                 seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = True):
+    def __init__(self, process_idx: int = 1, seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = True):
+        self._id = process_idx + 1
+        print("ID: " + str(self._id))
         self.seed(seed)
-        self._ros_proxy = ros_proxy
+        self._ros_proxy = MsjROSBridgeProxy(idx=self._id)
         self._set_new_goal()
         some_state = MsjRobotState(
             joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._GOAL_JOINT_VEL, is_feasible=True)
