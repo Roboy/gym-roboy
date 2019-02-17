@@ -6,7 +6,7 @@ import gym_roboy
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines import PPO2
 
-arg_workers = int(sys.argv[1])
+
 
 RESULTS_DIR = "./training_results"
 assert not os.path.isdir(RESULTS_DIR), "Folder '{}' already exists".format(RESULTS_DIR)
@@ -21,8 +21,7 @@ def setup_constructor(multi_process, rank, seed=0):
 
     return our_env_constructor
 
-
-num_cpu = arg_workers
+num_cpu = int(sys.argv[1])
 multi_process = bool(num_cpu > 1)
 env = SubprocVecEnv([setup_constructor(multi_process, i) for i in range(num_cpu)])
 agent = PPO2("MlpPolicy", env, tensorboard_log=RESULTS_DIR)
