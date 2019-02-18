@@ -1,10 +1,7 @@
 from typing import Sequence
-
 import numpy as np
 from itertools import combinations
-
 import pytest
-
 from .. import MsjEnv, MockMsjROSProxy, MsjRobotState, MsjROSBridgeProxy
 
 constructors = [
@@ -47,8 +44,8 @@ def test_msj_env_new_goal_is_different_and_feasible(msj_env: MsjEnv):
         msj_env._set_new_goal()
         new_goal = msj_env._goal_state
         assert not np.allclose(old_goal.joint_angle, new_goal.joint_angle)
-        assert np.all(-msj_env._JOINT_ANGLE_BOUNDS <= new_goal.joint_angle)
-        assert np.all(new_goal.joint_angle <= msj_env._JOINT_ANGLE_BOUNDS)
+        assert np.all(-msj_env.robot.JOINT_ANGLE_BOUNDS <= msj_env._goal_state.joint_angle)
+        assert np.all(msj_env._goal_state.joint_angle <= msj_env.robot.JOINT_ANGLE_BOUNDS)
 
 
 def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
@@ -67,7 +64,7 @@ def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(
     current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
 
-    msj_env._last_state.joint_vel = msj_env._JOINT_VEL_BOUNDS
+    msj_env._last_state.joint_vel = msj_env.robot.JOINT_VEL_BOUNDS
 
     assert not msj_env._did_complete_successfully(current_state=msj_env._last_state,
                                                   goal_state=msj_env._goal_state)
@@ -75,8 +72,8 @@ def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(
 
 def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
     env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False)
-    largest_distance = np.linalg.norm(2 * np.ones_like(MsjEnv._JOINT_ANGLE_BOUNDS))
-    worst_possible_reward_from_angles = -np.exp(largest_distance) - abs(MsjEnv._PENALTY_FOR_TOUCHING_BOUNDARY)
+    largest_distance = np.linalg.norm(2 * np.ones_like(env.robot.JOINT_ANGLE_BOUNDS))
+    worst_possible_reward_from_angles = -np.exp(largest_distance) - abs(env._PENALTY_FOR_TOUCHING_BOUNDARY)
     assert np.isclose(env.reward_range[0], worst_possible_reward_from_angles)
 
     env = MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True)
@@ -86,13 +83,13 @@ def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
 def test_msj_env_reward_is_lower_with_joint_vel_penalty():
     new_goal_state = MsjRobotState.new_random_state()
     new_goal_state.joint_vel = np.zeros_like(new_goal_state.joint_vel)
-    some_action = MsjEnv.action_space.sample()
 
     ros_proxy = MockMsjROSProxy()
     ros_proxy.forward_step_command = lambda a: new_goal_state
     env = MsjEnv(ros_proxy=ros_proxy, joint_vel_penalty=False)
     env.reset()
     env._set_new_goal(goal_joint_angle=new_goal_state.joint_angle)
+    some_action = env.action_space.sample()
     _, reward_with_no_joint_vel_penalty, _, _ = env.step(action=some_action)
 
     env = MsjEnv(ros_proxy=ros_proxy, joint_vel_penalty=True)
@@ -104,15 +101,15 @@ def test_msj_env_reward_is_lower_with_joint_vel_penalty():
 
 
 def test_msj_env_agent_gets_bonus_when_reaching_the_goal():
-
-    msj_env = MsjEnv(is_agent_getting_bonus_for_reaching_goal=False)
+    ros_proxy = MockMsjROSProxy()
+    msj_env = MsjEnv(ros_proxy=ros_proxy, is_agent_getting_bonus_for_reaching_goal=False)
     msj_env.reset()
     current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
     zero_action = np.array([0] * MsjRobotState.DIM_ACTION)
     _, reward_no_bonus, _, _ = msj_env.step(action=zero_action)
 
-    msj_env = MsjEnv(is_agent_getting_bonus_for_reaching_goal=True)
+    msj_env = MsjEnv(ros_proxy=ros_proxy, is_agent_getting_bonus_for_reaching_goal=True)
     msj_env.reset()
     current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
@@ -169,4 +166,3 @@ def test_msj_env_reward_monotonously_improves_during_approach(env: MsjEnv):
 
 def _strictly_increasing(sequence: Sequence[float]):
     return all(x < y for x, y in zip(sequence, sequence[1:]))
-    msj_env.render()

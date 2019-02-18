@@ -1,8 +1,8 @@
+from typing import Tuple
 import numpy as np
-
 import gym
 from gym import spaces
-from . import MsjROSProxy, MsjROSBridgeProxy, MsjRobotState
+from . import MsjROSProxy, MsjRobotState
 
 
 def _l2_distance(joint_angle1, joint_angle2):
@@ -13,46 +13,41 @@ def _l2_distance(joint_angle1, joint_angle2):
 
 class MsjEnv(gym.GoalEnv):
 
-    _MAX_TENDON_VEL = 0.02  # cm/s
-    _MAX_TENDON_VEL_FOR_SUCCESS = _MAX_TENDON_VEL / 100  # fraction not yet tuned
-
-    _JOINT_ANGLE_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.pi
-    _JOINT_VEL_BOUNDS = np.ones(MsjRobotState.DIM_JOINT_ANGLE) * np.pi / 6  # 30 deg/sec
-
-    _MAX_DISTANCE_JOINT_ANGLE = _l2_distance(-_JOINT_ANGLE_BOUNDS, _JOINT_ANGLE_BOUNDS)
-
-    observation_space = spaces.Box(
-        low=-np.concatenate((_JOINT_ANGLE_BOUNDS, _JOINT_VEL_BOUNDS, _JOINT_ANGLE_BOUNDS)),
-        high=np.concatenate((_JOINT_ANGLE_BOUNDS, _JOINT_VEL_BOUNDS, _JOINT_ANGLE_BOUNDS)),
-    )
-    action_space = spaces.Box(
-        low=-1,
-        high=1,
-        shape=(MsjRobotState.DIM_ACTION,),
-        dtype='float32'
-    )
-    _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
-    _PENALTY_FOR_TOUCHING_BOUNDARY = 1
     _BONUS_FOR_REACHING_GOAL = 10
 
     def __init__(self, ros_proxy: MsjROSProxy,
                  seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = False,
                  is_agent_getting_bonus_for_reaching_goal: bool = False):
-
         self.seed(seed)
         self._ros_proxy = ros_proxy
-        self._set_new_goal()
-        some_state = MsjRobotState(
-            joint_angle=self._JOINT_ANGLE_BOUNDS, joint_vel=self._GOAL_JOINT_VEL, is_feasible=True)
-        corresponding_worst_state = MsjRobotState(
-            joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS, is_feasible=False)
         self._joint_vel_penalty = joint_vel_penalty
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
         self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
-        self.reward_range = (
-            self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state),  # min-reward
-            self.compute_reward(current_state=some_state, goal_state=some_state)  # max-reward
-        )
+        self.robot = MsjRobotState
+
+        self._GOAL_JOINT_VEL = np.zeros(self.robot.DIM_JOINT_ANGLE)
+        self._MAX_TENDON_VEL_FOR_SUCCESS = self.robot.MAX_TENDON_VEL / 100  # fraction not yet tuned
+        self._MAX_DISTANCE_JOINT_ANGLE = _l2_distance(-self.robot.JOINT_ANGLE_BOUNDS, self.robot.JOINT_ANGLE_BOUNDS)
+        self._PENALTY_FOR_TOUCHING_BOUNDARY = 1
+        self._BONUS_FOR_REACHING_GOAL = 10
+
+        self.reward_range = self._create_reward_range(robot=self.robot)
+        self.action_space = MsjRobotState.ACTION_SPACE
+        obs_bounds = np.concatenate((self.robot.JOINT_ANGLE_BOUNDS,
+                                     self.robot.JOINT_VEL_BOUNDS,
+                                     self.robot.JOINT_ANGLE_BOUNDS))
+        self.observation_space = spaces.Box(low=-obs_bounds, high=obs_bounds)
+        self._set_new_goal()
+
+    def _create_reward_range(self, robot: MsjRobotState) -> Tuple[float, float]:
+        some_state = MsjRobotState(joint_angle=robot.JOINT_ANGLE_BOUNDS,
+                                   joint_vel=self._GOAL_JOINT_VEL, is_feasible=True)
+        corresponding_worst_state = MsjRobotState(joint_angle=-robot.JOINT_ANGLE_BOUNDS,
+                                                  joint_vel=-robot.JOINT_VEL_BOUNDS,
+                                                  is_feasible=False)
+        max_reward = self.compute_reward(current_state=some_state, goal_state=some_state)
+        min_reward = self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state)
+        return min_reward, max_reward
 
     def step(self, action):
         assert self.action_space.contains(action)
@@ -60,11 +55,11 @@ class MsjEnv(gym.GoalEnv):
         if self._is_tendon_vel_dependent_on_distance:
             distance_to_target = _l2_distance(self._last_state.joint_angle, self._goal_state.joint_angle)
             scale_factor = np.power(distance_to_target / self._MAX_DISTANCE_JOINT_ANGLE, 1/4)
-            current_max_tendon_speed = scale_factor * self._MAX_TENDON_VEL
+            current_max_tendon_speed = scale_factor * self.robot.MAX_TENDON_VEL
             action = np.multiply(current_max_tendon_speed, action)
 
         else:
-            action = np.multiply(self._MAX_TENDON_VEL, action)
+            action = np.multiply(self.robot.MAX_TENDON_VEL, action)
 
         action = action.tolist()
 
@@ -133,11 +128,11 @@ class MsjEnv(gym.GoalEnv):
         return is_close and is_moving_slow
 
     def _l2_distance_for_success(self):
-        return _l2_distance(-self._JOINT_ANGLE_BOUNDS, self._JOINT_ANGLE_BOUNDS) / 500
+        return _l2_distance(-self.robot.JOINT_ANGLE_BOUNDS, self.robot.JOINT_ANGLE_BOUNDS) / 500
 
     def _normalize_state(self, current_state: MsjRobotState):
         return MsjRobotState(
-            joint_angle=current_state.joint_angle / self._JOINT_ANGLE_BOUNDS,
-            joint_vel=current_state.joint_vel / self._JOINT_VEL_BOUNDS,
+            joint_angle=current_state.joint_angle / self.robot.JOINT_ANGLE_BOUNDS,
+            joint_vel=current_state.joint_vel / self.robot.JOINT_VEL_BOUNDS,
             is_feasible=current_state.is_feasible,
         )

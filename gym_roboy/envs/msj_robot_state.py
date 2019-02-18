@@ -1,11 +1,17 @@
 import numpy as np
+from gym import spaces
 from typeguard import typechecked
 
 
 class MsjRobotState:
-
     DIM_ACTION = 8
+    MAX_TENDON_VEL = 0.02  # cm/s
+
     DIM_JOINT_ANGLE = 3
+    JOINT_ANGLE_BOUNDS = np.ones(DIM_JOINT_ANGLE) * np.pi
+    JOINT_VEL_BOUNDS = np.ones(DIM_JOINT_ANGLE) * np.pi / 6  # 30 deg/sec
+
+    ACTION_SPACE = spaces.Box(low=-1, high=1, shape=(DIM_ACTION,), dtype='float32')
 
     @typechecked
     def __init__(self, joint_angle, joint_vel, is_feasible: bool):
