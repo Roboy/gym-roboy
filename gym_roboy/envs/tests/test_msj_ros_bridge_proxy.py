@@ -66,3 +66,12 @@ def test_msj_env_stepping_on_the_boundary_does_not_reset():
     assert not robot_state.is_feasible
     robot_state = ros_bridge_proxy.forward_step_command(action=strong_action)
     assert not robot_state.is_feasible
+
+
+@pytest.mark.integration
+def test_ros_bridge_proxy_load_test():
+    p = MsjROSBridgeProxy()
+    for idx in range(100):
+        p.forward_reset_command()
+        p.get_new_goal_joint_angles()
+        print("completed" + str(idx))

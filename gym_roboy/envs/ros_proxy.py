@@ -1,4 +1,3 @@
-import time
 from datetime import datetime
 from typing import List
 
@@ -124,8 +123,6 @@ class MsjROSBridgeProxy(MsjROSProxy):
         return self._make_robot_state(future.result())
 
     def get_new_goal_joint_angles(self):
-        #self.node.get_logger().info("Reached goal joint angles: " + str(self.read_state().joint_angle))
-        self._delay_if_necessary()
         self._check_service_available_or_timeout(self.goal_client)
         req = GymGoal.Request()
         future = self.goal_client.call_async(req)
@@ -135,12 +132,3 @@ class MsjROSBridgeProxy(MsjROSProxy):
         if res is not None:
             self.node.get_logger().info("feasible: " + str(res.q))
         return res.q
-
-    def _delay_if_necessary(self) -> None:
-        """If the /gym_goal service gets called within a second it
-        delivers the same joint angle. Delaying is a quick fix."""
-        now = datetime.now()
-        seconds_since_last_service_call = (now - self._last_time_gym_goal_service_was_called).total_seconds()
-        min_seconds_between_calls = 1.1
-        if seconds_since_last_service_call <= min_seconds_between_calls:
-            time.sleep(min_seconds_between_calls - seconds_since_last_service_call)
