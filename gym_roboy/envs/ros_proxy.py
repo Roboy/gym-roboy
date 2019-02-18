@@ -58,27 +58,20 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     _RCLPY_INITIALIZED = False
 
-    def __init__(self, multi_process: bool = False, idx: int = 1, timeout_secs: int = 20):
+    def __init__(self, process_idx: int = 1, timeout_secs: int = 20):
         if not self._RCLPY_INITIALIZED:
             rclpy.init()
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
         self._timeout_secs = timeout_secs
         self._step_size = 0.1
-        self._id = idx
-        self._multi_process = multi_process
         self.node = rclpy.create_node('gym_rosnode')
-        self._create_ros_client()
+        self._create_ros_client(process_idx)
         self._last_time_gym_goal_service_was_called = datetime.now()
 
-    def _create_ros_client(self):
-        if self._multi_process:
-            self.step_client = self.node.create_client(GymStep, '/instance' + str(self._id) + '/gym_step')
-            self.reset_client = self.node.create_client(GymReset, '/instance' + str(self._id) + '/gym_reset')
-            self.goal_client = self.node.create_client(GymGoal, '/instance' + str(self._id) + '/gym_goal')
-        else:
-            self.step_client = self.node.create_client(GymStep, '/gym_step')
-            self.reset_client = self.node.create_client(GymReset, '/gym_reset')
-            self.goal_client = self.node.create_client(GymGoal, '/gym_goal')
+    def _create_ros_client(self, process_idx: int):
+        self.step_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_step')
+        self.reset_client = self.node.create_client(GymReset, '/instance' + str(process_idx) + '/gym_reset')
+        self.goal_client = self.node.create_client(GymGoal, '/instance' + str(process_idx) + '/gym_goal')
 
     def _log_robot_state(self, robot_state):
         q_pos = robot_state.q
