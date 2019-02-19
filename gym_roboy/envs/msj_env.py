@@ -37,7 +37,7 @@ class MsjEnv(gym.GoalEnv):
 
     def __init__(self, ros_proxy: MsjROSProxy = MsjROSBridgeProxy(),
                  seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = False,
-                 is_agent_getting_bonus_for_done: bool = False):
+                 is_agent_getting_bonus_for_reaching_goal: bool = False):
         self.seed(seed)
         self._ros_proxy = ros_proxy
         self._set_new_goal()
@@ -47,7 +47,7 @@ class MsjEnv(gym.GoalEnv):
             joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS, is_feasible=False)
         self._joint_vel_penalty = joint_vel_penalty
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
-        self._is_agent_getting_bonus_for_done = is_agent_getting_bonus_for_done
+        self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
         self.reward_range = (
             self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state),  # min-reward
             self.compute_reward(current_state=some_state, goal_state=some_state)  # max-reward
@@ -109,7 +109,7 @@ class MsjEnv(gym.GoalEnv):
             reward -= abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
 
         if self._did_complete_successfully(current_state=current_state, goal_state=goal_state) and \
-           self._is_agent_getting_bonus_for_done:
+           self._is_agent_getting_bonus_for_reaching_goal:
             reward += self._BONUS_FOR_REACHING_GOAL
 
         assert self.reward_range[0] <= reward <= self.reward_range[1], \

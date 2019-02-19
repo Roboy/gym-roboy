@@ -50,8 +50,8 @@ def test_msj_env_new_goal_is_different_and_feasible(msj_env: MsjEnv):
 
 
 def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
-    obs = msj_env.reset()
-    current_joint_angle = obs[0:3]
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
     zero_action = np.zeros(len(msj_env.action_space.low))
     _, reward, done, _ = msj_env.step(zero_action)
@@ -62,8 +62,8 @@ def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
 
 
 def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(msj_env: MsjEnv):
-    obs = msj_env.reset()
-    current_joint_angle = obs[0:3]
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
 
     msj_env._last_state.joint_vel = msj_env._JOINT_VEL_BOUNDS
@@ -104,18 +104,18 @@ def test_msj_env_reward_is_lower_with_joint_vel_penalty():
 
 def test_msj_env_agent_gets_bonus_when_reaching_the_goal():
 
-    msj_env = MsjEnv(is_agent_getting_bonus_for_done=False)
-    obs = msj_env.reset()
-    current_joint_angle = obs[0:3]
+    msj_env = MsjEnv(is_agent_getting_bonus_for_reaching_goal=False)
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
-    zero_action = np.array([0]*8)
+    zero_action = np.array([0] * MsjRobotState.DIM_ACTION)
     _, reward_no_bonus, _, _ = msj_env.step(action=zero_action)
 
-    msj_env = MsjEnv(is_agent_getting_bonus_for_done=True)
-    obs = msj_env.reset()
-    current_joint_angle = obs[0:3]
+    msj_env = MsjEnv(is_agent_getting_bonus_for_reaching_goal=True)
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
-    zero_action = np.array([0]*8)
+    zero_action = np.array([0] * MsjRobotState.DIM_ACTION)
     _, reward_with_bonus, _, _ = msj_env.step(action=zero_action)
 
     assert np.allclose(reward_with_bonus - reward_no_bonus, msj_env._BONUS_FOR_REACHING_GOAL)
