@@ -8,15 +8,14 @@ import pytest
 from .. import MsjEnv, MockMsjROSProxy, MsjRobotState, MsjROSBridgeProxy
 
 constructors = [
-    lambda: MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=True),
-    lambda: MsjEnv(ros_proxy=MockMsjROSProxy(), joint_vel_penalty=False),
-    pytest.param(lambda: MsjEnv(ros_proxy=MsjROSBridgeProxy(), joint_vel_penalty=False), marks=pytest.mark.integration)
+    lambda: MsjEnv(ros_proxy=MockMsjROSProxy()),
+    pytest.param(lambda: MsjEnv(ros_proxy=MsjROSBridgeProxy()), marks=pytest.mark.integration)
 ]
 
 
 @pytest.fixture(
     params=constructors,
-    ids=["unit-test-default", "unit-test-no-joint-vel-penalty", "integration"]
+    ids=["unit-test-default", "integration"]
 )
 def msj_env(request) -> MsjEnv:
     return request.param()
@@ -43,16 +42,18 @@ def test_msj_env_reset(msj_env):
 
 def test_msj_env_new_goal_is_different_and_feasible(msj_env: MsjEnv):
     for _ in range(3):
-        old_goal = np.array(msj_env._goal_joint_angle)
         msj_env._set_new_goal()
-        assert not np.allclose(old_goal, msj_env._goal_joint_angle)
-        assert np.all(-msj_env._JOINT_ANGLE_BOUNDS <= msj_env._goal_joint_angle)
-        assert np.all(msj_env._goal_joint_angle <= msj_env._JOINT_ANGLE_BOUNDS)
+        old_goal = msj_env._goal_state
+        msj_env._set_new_goal()
+        new_goal = msj_env._goal_state
+        assert not np.allclose(old_goal.joint_angle, new_goal.joint_angle)
+        assert np.all(-msj_env._JOINT_ANGLE_BOUNDS <= new_goal.joint_angle)
+        assert np.all(new_goal.joint_angle <= msj_env._JOINT_ANGLE_BOUNDS)
 
 
 def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
-    obs = msj_env.reset()
-    current_joint_angle = obs[0:3]
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
     zero_action = np.zeros(len(msj_env.action_space.low))
     _, reward, done, _ = msj_env.step(zero_action)
@@ -61,14 +62,16 @@ def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
     assert np.isclose(reward, max_reward)
 
 
+
 def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(msj_env: MsjEnv):
-    obs = msj_env.reset()
-    current_joint_angle = obs[0:3]
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
     msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
 
     msj_env._last_state.joint_vel = msj_env._JOINT_VEL_BOUNDS
 
-    assert not msj_env._did_complete_successfully(current_state=msj_env._last_state)
+    assert not msj_env._did_complete_successfully(current_state=msj_env._last_state,
+                                                  goal_state=msj_env._goal_state)
 
 
 def test_msj_env_joint_vel_penalty_affects_worst_possible_reward():
@@ -99,6 +102,25 @@ def test_msj_env_reward_is_lower_with_joint_vel_penalty():
     _, reward_with_joint_vel_penalty, _, _ = env.step(action=some_action)
 
     assert reward_with_no_joint_vel_penalty > reward_with_joint_vel_penalty
+
+
+def test_msj_env_agent_gets_bonus_when_reaching_the_goal():
+
+    msj_env = MsjEnv(is_agent_getting_bonus_for_reaching_goal=False)
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
+    msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
+    zero_action = np.array([0] * MsjRobotState.DIM_ACTION)
+    _, reward_no_bonus, _, _ = msj_env.step(action=zero_action)
+
+    msj_env = MsjEnv(is_agent_getting_bonus_for_reaching_goal=True)
+    msj_env.reset()
+    current_joint_angle = msj_env._last_state.joint_angle
+    msj_env._set_new_goal(goal_joint_angle=current_joint_angle)
+    zero_action = np.array([0] * MsjRobotState.DIM_ACTION)
+    _, reward_with_bonus, _, _ = msj_env.step(action=zero_action)
+
+    assert np.allclose(reward_with_bonus - reward_no_bonus, msj_env._BONUS_FOR_REACHING_GOAL)
 
 
 def test_msj_env_render_does_nothing(msj_env):
@@ -148,3 +170,4 @@ def test_msj_env_reward_monotonously_improves_during_approach(env: MsjEnv):
 
 def _strictly_increasing(sequence: Sequence[float]):
     return all(x < y for x, y in zip(sequence, sequence[1:]))
+    msj_env.render()

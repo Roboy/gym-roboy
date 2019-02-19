@@ -28,14 +28,17 @@ class MsjEnv(gym.GoalEnv):
     action_space = spaces.Box(
         low=-1,
         high=1,
-        shape=(MsjRobotState.DIM_ACTION,)
-        , dtype='float32'
+        shape=(MsjRobotState.DIM_ACTION,),
+        dtype='float32'
     )
     _GOAL_JOINT_VEL = np.zeros(MsjRobotState.DIM_JOINT_ANGLE)
     _PENALTY_FOR_TOUCHING_BOUNDARY = 1
+    _BONUS_FOR_REACHING_GOAL = 10
 
-    def __init__(self, ros_proxy: MsjROSProxy,
-                 seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = True):
+    def __init__(self, ros_proxy: MsjROSProxy = MsjROSBridgeProxy(),
+                 seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = False,
+                 is_agent_getting_bonus_for_reaching_goal: bool = False):
+
         self.seed(seed)
         self._ros_proxy = ros_proxy
         self._set_new_goal()
@@ -45,6 +48,7 @@ class MsjEnv(gym.GoalEnv):
             joint_angle=-self._JOINT_ANGLE_BOUNDS, joint_vel=-self._JOINT_VEL_BOUNDS, is_feasible=False)
         self._joint_vel_penalty = joint_vel_penalty
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
+        self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
         self.reward_range = (
             self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state),  # min-reward
             self.compute_reward(current_state=some_state, goal_state=some_state)  # max-reward
@@ -69,9 +73,10 @@ class MsjEnv(gym.GoalEnv):
         obs = self._make_obs(robot_state=new_state)
         info = {}
         reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
-        done = self._did_complete_successfully(current_state=new_state)
+        done = self._did_complete_successfully(current_state=new_state, goal_state=self._goal_state)
         if done:
             print("#############GOAL REACHED#############")
+
             self._set_new_goal()
 
         return obs, reward, done, info
@@ -80,7 +85,7 @@ class MsjEnv(gym.GoalEnv):
         return np.concatenate([
             robot_state.joint_angle,
             robot_state.joint_vel,
-            self._goal_joint_angle
+            self._goal_state.joint_angle,
         ])
 
     def reset(self):
@@ -102,20 +107,31 @@ class MsjEnv(gym.GoalEnv):
             reward = (joint_vel_l2_distance+1) * (reward-np.exp(reward))
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
+            normed_joint_vel = np.linalg.norm(current_state.joint_vel)
+            reward = (normed_joint_vel+1) * (reward-np.exp(reward))
+
         if not current_state.is_feasible:
             reward -= abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
+
+        if self._did_complete_successfully(current_state=current_state, goal_state=goal_state) and \
+           self._is_agent_getting_bonus_for_reaching_goal:
+            reward += self._BONUS_FOR_REACHING_GOAL
+
+        assert self.reward_range[0] <= reward <= self.reward_range[1], \
+            "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
+
         return reward
 
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""
-        self._goal_joint_angle = goal_joint_angle if goal_joint_angle is not None \
+        new_joint_angle = goal_joint_angle if goal_joint_angle is not None \
             else self._ros_proxy.get_new_goal_joint_angles()
-        self._goal_state = MsjRobotState(joint_angle=self._goal_joint_angle,
+        self._goal_state = MsjRobotState(joint_angle=new_joint_angle,
                                          joint_vel=self._GOAL_JOINT_VEL,
                                          is_feasible=True)
 
-    def _did_complete_successfully(self, current_state: MsjRobotState) -> bool:
-        l2_distance = _l2_distance(current_state.joint_angle, self._goal_state.joint_angle)
+    def _did_complete_successfully(self, current_state: MsjRobotState, goal_state: MsjRobotState) -> bool:
+        l2_distance = _l2_distance(current_state.joint_angle, goal_state.joint_angle)
         is_close = bool(l2_distance < self._l2_distance_for_success())  # cast from numpy.bool to bool
         is_moving_slow = all(current_state.joint_vel < self._MAX_TENDON_VEL_FOR_SUCCESS)
         return is_close and is_moving_slow
