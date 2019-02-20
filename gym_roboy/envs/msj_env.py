@@ -105,8 +105,6 @@ class MsjEnv(gym.GoalEnv):
         if self._joint_vel_penalty:
             joint_vel_l2_distance = np.linalg.norm(current_state.joint_vel - goal_state.joint_vel)
             reward = (joint_vel_l2_distance+1) * (reward-np.exp(reward))
-        assert self.reward_range[0] <= reward <= self.reward_range[1], \
-            "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
             normed_joint_vel = np.linalg.norm(current_state.joint_vel)
             reward = (normed_joint_vel+1) * (reward-np.exp(reward))
 
