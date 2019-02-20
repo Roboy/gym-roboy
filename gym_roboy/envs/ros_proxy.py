@@ -113,7 +113,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     def _check_service_available_or_timeout(self, client) -> None:
         if not client.wait_for_service(timeout_sec=self._timeout_secs):
-            raise TimeoutError("ROS communication timed out")
+            raise TimeoutError("ROS communication timed out:", client.srv_name)
 
     def read_state(self):
         self._check_service_available_or_timeout(self.read_state_client)
