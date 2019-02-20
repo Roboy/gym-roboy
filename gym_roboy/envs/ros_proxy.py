@@ -56,7 +56,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     _RCLPY_INITIALIZED = False
 
-    def __init__(self, process_idx: int = 1, timeout_secs: int = 20):
+    def __init__(self, process_idx: int = 1, timeout_secs: int = 2):
         if not self._RCLPY_INITIALIZED:
             rclpy.init()
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
