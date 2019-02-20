@@ -6,7 +6,6 @@ import rclpy
 from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
-from std_msgs.msg import Float32
 from typeguard import typechecked
 
 from .msj_robot_state import MsjRobotState
@@ -57,7 +56,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     _RCLPY_INITIALIZED = False
 
-    def __init__(self, process_idx: int = 1, timeout_secs: int = 20):
+    def __init__(self, process_idx: int = 1, timeout_secs: int = 2):
         if not self._RCLPY_INITIALIZED:
             rclpy.init()
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
@@ -71,6 +70,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.step_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_step')
         self.reset_client = self.node.create_client(GymReset, '/instance' + str(process_idx) + '/gym_reset')
         self.goal_client = self.node.create_client(GymGoal, '/instance' + str(process_idx) + '/gym_goal')
+        self.read_state_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_read_state')
 
     def _log_robot_state(self, robot_state):
         q_pos = robot_state.q
@@ -82,7 +82,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     def forward_reset_command(self):
         self._check_service_available_or_timeout(self.reset_client)
-        request = GymStep.Request()
+        request = GymReset.Request()  #TODO: new service message type for reset service
         request.step_size = self._step_size
         future = self.reset_client.call_async(request)
         rclpy.spin_until_future_complete(self.node, future)
@@ -116,9 +116,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
             raise TimeoutError("ROS communication timed out")
 
     def read_state(self):
-        self._check_service_available_or_timeout(self.step_client)
-        req = GymStep.Request()
-        future = self.step_client.call_async(req)
+        self._check_service_available_or_timeout(self.read_state_client)
+        req = GymStep.Request() #TODO: new service type for read_state_client
+        future = self.read_state_client.call_async(req)
         rclpy.spin_until_future_complete(self.node, future)
         return self._make_robot_state(future.result())
 

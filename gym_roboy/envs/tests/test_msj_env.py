@@ -62,7 +62,6 @@ def test_msj_env_reaching_goal_angle_delivers_maximum_reward(msj_env: MsjEnv):
     assert np.isclose(reward, max_reward)
 
 
-
 def test_msj_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(msj_env: MsjEnv):
     msj_env.reset()
     current_joint_angle = msj_env._last_state.joint_angle
