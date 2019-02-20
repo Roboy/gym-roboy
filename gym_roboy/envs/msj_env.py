@@ -35,7 +35,7 @@ class MsjEnv(gym.GoalEnv):
     _PENALTY_FOR_TOUCHING_BOUNDARY = 1
     _BONUS_FOR_REACHING_GOAL = 10
 
-    def __init__(self, ros_proxy: MsjROSProxy = MsjROSBridgeProxy(),
+    def __init__(self, ros_proxy: MsjROSProxy,
                  seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = False,
                  is_agent_getting_bonus_for_reaching_goal: bool = False):
 
