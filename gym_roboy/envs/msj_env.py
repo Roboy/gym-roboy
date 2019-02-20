@@ -107,7 +107,7 @@ class MsjEnv(gym.GoalEnv):
             reward = (normed_joint_vel+1) * (reward-np.exp(reward))
 
         if not current_state.is_feasible:
-            reward -= abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
+            reward -= np.abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
 
         if self._did_complete_successfully(current_state=current_state, goal_state=goal_state) and \
            self._is_agent_getting_bonus_for_reaching_goal:
