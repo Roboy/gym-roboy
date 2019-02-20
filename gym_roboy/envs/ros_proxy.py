@@ -6,7 +6,6 @@ import rclpy
 from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
-from std_msgs.msg import Float32
 from typeguard import typechecked
 
 from .msj_robot_state import MsjRobotState
@@ -71,6 +70,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
         self.step_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_step')
         self.reset_client = self.node.create_client(GymReset, '/instance' + str(process_idx) + '/gym_reset')
         self.goal_client = self.node.create_client(GymGoal, '/instance' + str(process_idx) + '/gym_goal')
+        self.observation_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_observation')
 
     def _log_robot_state(self, robot_state):
         q_pos = robot_state.q
@@ -82,7 +82,7 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     def forward_reset_command(self):
         self._check_service_available_or_timeout(self.reset_client)
-        request = GymStep.Request()
+        request = GymReset.Request()
         request.step_size = self._step_size
         future = self.reset_client.call_async(request)
         rclpy.spin_until_future_complete(self.node, future)
@@ -116,9 +116,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
             raise TimeoutError("ROS communication timed out")
 
     def read_state(self):
-        self._check_service_available_or_timeout(self.step_client)
+        self._check_service_available_or_timeout(self.observation_client)
         req = GymStep.Request()
-        future = self.step_client.call_async(req)
+        future = self.observation_client.call_async(req)
         rclpy.spin_until_future_complete(self.node, future)
         return self._make_robot_state(future.result())
 
