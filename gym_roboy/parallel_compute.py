@@ -1,3 +1,4 @@
+import os
 import sys
 
 import gym
@@ -6,8 +7,11 @@ from stable_baselines import PPO2
 from .envs import RoboyEnv, ROSBridgeProxy
 from .envs.robots import MsjRobot
 
-RESULTS_DIR = "./training_results"
-MODEL_FILE = "./model.pkl"
+
+is_results_dir_passed = len(sys.argv) is 3
+RESULTS_DIR = os.path.abspath(sys.argv[2]) if is_results_dir_passed else "./training_results"
+TENSORBOARD_DIR = os.path.join(RESULTS_DIR, "tensorboard")
+MODEL_FILE = os.path.join(RESULTS_DIR, "model.pkl")
 
 
 def setup_constructor(rank, seed=0):
@@ -21,7 +25,7 @@ def setup_constructor(rank, seed=0):
 
 num_cpu = int(sys.argv[1])
 env = SubprocVecEnv([setup_constructor(i + 1) for i in range(num_cpu)])
-agent = PPO2("MlpPolicy", env, tensorboard_log=RESULTS_DIR)
+agent = PPO2("MlpPolicy", env, tensorboard_log=TENSORBOARD_DIR)
 
 while True:
     agent.learn(total_timesteps=1000000)
