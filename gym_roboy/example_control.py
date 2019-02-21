@@ -3,7 +3,8 @@ import os
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO2
 
-from .envs import MsjEnv, MsjROSBridgeProxy
+from .envs import RoboyEnv, ROSBridgeProxy
+from .envs.robots import MsjRobot
 
 
 RESULTS_DIR = "./training_results"
@@ -12,7 +13,7 @@ MODEL_FILE = "./model.pkl"
 
 def main():
     # The algorithms require a vectorized environment to run
-    env_constructor = lambda: MsjEnv(ros_proxy=MsjROSBridgeProxy())
+    env_constructor = lambda: RoboyEnv(ros_proxy=ROSBridgeProxy(robot=MsjRobot()))
     env = DummyVecEnv([env_constructor])
 
     if os.path.isfile(MODEL_FILE):

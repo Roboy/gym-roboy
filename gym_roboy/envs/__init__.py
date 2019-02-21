@@ -1,3 +1,2 @@
-from .msj_robot_state import MsjRobotState
-from .ros_proxy import MsjROSProxy, MsjROSBridgeProxy, MockMsjROSProxy
-from .msj_env import MsjEnv
+from .ros_proxy import ROSProxy, ROSBridgeProxy, StubROSProxy
+from .roboy_env import RoboyEnv

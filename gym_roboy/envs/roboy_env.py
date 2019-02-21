@@ -2,7 +2,8 @@ from typing import Tuple
 import numpy as np
 import gym
 from gym import spaces
-from . import MsjROSProxy, MsjRobotState
+from . import ROSProxy
+from .robots import RobotState, RoboyRobot
 
 
 def _l2_distance(joint_angle1, joint_angle2):
@@ -11,40 +12,40 @@ def _l2_distance(joint_angle1, joint_angle2):
     return np.linalg.norm(subtract, ord=2)
 
 
-class MsjEnv(gym.GoalEnv):
+class RoboyEnv(gym.GoalEnv):
 
-    _BONUS_FOR_REACHING_GOAL = 10
-
-    def __init__(self, ros_proxy: MsjROSProxy,
-                 seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = False,
-                 is_agent_getting_bonus_for_reaching_goal: bool = False):
+    def __init__(self, ros_proxy: ROSProxy, seed: int = None,
+                 joint_vel_penalty: bool = False,
+                 is_tendon_vel_dependent_on_distance: bool = True,
+                 is_agent_getting_bonus_for_reaching_goal: bool = True):
         self.seed(seed)
         self._ros_proxy = ros_proxy
         self._joint_vel_penalty = joint_vel_penalty
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
         self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
-        self.robot = MsjRobotState
+        self._robot = robot = ros_proxy.robot
 
-        self._GOAL_JOINT_VEL = np.zeros(self.robot.DIM_JOINT_ANGLE)
-        self._MAX_TENDON_VEL_FOR_SUCCESS = self.robot.MAX_TENDON_VEL / 100  # fraction not yet tuned
-        self._MAX_DISTANCE_JOINT_ANGLE = _l2_distance(-self.robot.JOINT_ANGLE_BOUNDS, self.robot.JOINT_ANGLE_BOUNDS)
+        self._GOAL_JOINT_VEL = robot.new_zero_state().joint_angle
+        self._MAX_DISTANCE_JOINT_ANGLE = _l2_distance(robot.get_joint_angles_space().low, robot.get_joint_angles_space().high)
+        self._MAX_DISTANCE_JOINT_VELS = _l2_distance(robot.get_joint_vels_space().low, robot.get_joint_vels_space().high)
         self._PENALTY_FOR_TOUCHING_BOUNDARY = 1
         self._BONUS_FOR_REACHING_GOAL = 10
 
-        self.reward_range = self._create_reward_range(robot=self.robot)
-        self.action_space = MsjRobotState.ACTION_SPACE
-        obs_bounds = np.concatenate((self.robot.JOINT_ANGLE_BOUNDS,
-                                     self.robot.JOINT_VEL_BOUNDS,
-                                     self.robot.JOINT_ANGLE_BOUNDS))
-        self.observation_space = spaces.Box(low=-obs_bounds, high=obs_bounds)
+        self.reward_range = self._create_reward_range(robot=robot)
+        self.action_space = spaces.Box(low=-1, high=1, shape=robot.get_action_space().shape, dtype="float32")
+        self.observation_space = spaces.Box(
+            low=np.concatenate((robot.get_joint_angles_space().low, robot.get_joint_vels_space().low, robot.get_joint_angles_space().low)),
+            high=np.concatenate((robot.get_joint_angles_space().high, robot.get_joint_vels_space().high, robot.get_joint_angles_space().high)),
+        )
         self._set_new_goal()
 
-    def _create_reward_range(self, robot: MsjRobotState) -> Tuple[float, float]:
-        some_state = MsjRobotState(joint_angle=robot.JOINT_ANGLE_BOUNDS,
-                                   joint_vel=self._GOAL_JOINT_VEL, is_feasible=True)
-        corresponding_worst_state = MsjRobotState(joint_angle=-robot.JOINT_ANGLE_BOUNDS,
-                                                  joint_vel=-robot.JOINT_VEL_BOUNDS,
-                                                  is_feasible=False)
+    def _create_reward_range(self, robot: RoboyRobot) -> Tuple[float, float]:
+        some_state = robot.new_state(
+            joint_angle=robot.get_joint_angles_space().high,
+            joint_vel=robot.get_joint_vels_space().high, is_feasible=True)
+        corresponding_worst_state = robot.new_state(
+            joint_angle=robot.get_joint_angles_space().low,
+            joint_vel=robot.get_joint_vels_space().low, is_feasible=False)
         max_reward = self.compute_reward(current_state=some_state, goal_state=some_state)
         min_reward = self.compute_reward(current_state=corresponding_worst_state, goal_state=some_state)
         return min_reward, max_reward
@@ -55,11 +56,11 @@ class MsjEnv(gym.GoalEnv):
         if self._is_tendon_vel_dependent_on_distance:
             distance_to_target = _l2_distance(self._last_state.joint_angle, self._goal_state.joint_angle)
             scale_factor = np.power(distance_to_target / self._MAX_DISTANCE_JOINT_ANGLE, 1/4)
-            current_max_tendon_speed = scale_factor * self.robot.MAX_TENDON_VEL
+            current_max_tendon_speed = scale_factor * self._robot.get_action_space().high
             action = np.multiply(current_max_tendon_speed, action)
 
         else:
-            action = np.multiply(self.robot.MAX_TENDON_VEL, action)
+            action = np.multiply(self._robot.get_action_space().high, action)
 
         action = action.tolist()
 
@@ -76,7 +77,7 @@ class MsjEnv(gym.GoalEnv):
 
         return obs, reward, done, info
 
-    def _make_obs(self, robot_state: MsjRobotState):
+    def _make_obs(self, robot_state: RobotState):
         return np.concatenate([
             robot_state.joint_angle,
             robot_state.joint_vel,
@@ -91,10 +92,10 @@ class MsjEnv(gym.GoalEnv):
     def render(self, mode='human'):
         pass
 
-    def compute_reward(self, current_state: MsjRobotState, goal_state: MsjRobotState, info=None):
+    def compute_reward(self, current_state: RobotState, goal_state: RobotState, info=None):
 
-        current_state = self._normalize_state(current_state)
-        goal_state = self._normalize_state(goal_state)
+        current_state = self._robot.normalize_state(current_state)
+        goal_state = self._robot.normalize_state(goal_state)
         reward = -np.exp(_l2_distance(current_state.joint_angle, goal_state.joint_angle))
 
         if self._joint_vel_penalty:
@@ -111,28 +112,21 @@ class MsjEnv(gym.GoalEnv):
         assert self.reward_range[0] <= reward <= self.reward_range[1], \
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
 
-        return reward
+        return float(reward)  # cast from numpy.float to float
 
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""
         new_joint_angle = goal_joint_angle if goal_joint_angle is not None \
             else self._ros_proxy.get_new_goal_joint_angles()
-        self._goal_state = MsjRobotState(joint_angle=new_joint_angle,
-                                         joint_vel=self._GOAL_JOINT_VEL,
-                                         is_feasible=True)
+        self._goal_state = self._robot.new_state(joint_angle=new_joint_angle,
+                                                 joint_vel=self._GOAL_JOINT_VEL,
+                                                 is_feasible=True)
 
-    def _did_complete_successfully(self, current_state: MsjRobotState, goal_state: MsjRobotState) -> bool:
-        l2_distance = _l2_distance(current_state.joint_angle, goal_state.joint_angle)
-        is_close = bool(l2_distance < self._l2_distance_for_success())  # cast from numpy.bool to bool
-        is_moving_slow = all(current_state.joint_vel < self._MAX_TENDON_VEL_FOR_SUCCESS)
-        return is_close and is_moving_slow
+    def _did_complete_successfully(self, current_state: RobotState, goal_state: RobotState) -> bool:
+        angles_l2_distance = _l2_distance(current_state.joint_angle, goal_state.joint_angle)
+        angles_are_close = bool(angles_l2_distance < self._MAX_DISTANCE_JOINT_ANGLE/500)  # cast from numpy.bool to bool
 
-    def _l2_distance_for_success(self):
-        return _l2_distance(-self.robot.JOINT_ANGLE_BOUNDS, self.robot.JOINT_ANGLE_BOUNDS) / 500
+        vels_l2_distance = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
+        vels_are_close = bool(vels_l2_distance < self._MAX_DISTANCE_JOINT_VELS/100)  # fraction not yet tuned
 
-    def _normalize_state(self, current_state: MsjRobotState):
-        return MsjRobotState(
-            joint_angle=current_state.joint_angle / self.robot.JOINT_ANGLE_BOUNDS,
-            joint_vel=current_state.joint_vel / self.robot.JOINT_VEL_BOUNDS,
-            is_feasible=current_state.is_feasible,
-        )
+        return angles_are_close and vels_are_close

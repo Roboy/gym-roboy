@@ -8,58 +8,62 @@ from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
 from typeguard import typechecked
 
-from .msj_robot_state import MsjRobotState
+from .robots import RobotState, RoboyRobot
 
 
-class MsjROSProxy:
+class ROSProxy:
     """
-    This interface defines how the MsjEnv interacts with the Msj Robot.
+    This interface defines how the RoboyEnv interacts with the Roboy Robot.
     One implementation will use the ROS1 service over ROS2 bridge.
     """
-    def read_state(self) -> MsjRobotState:
+    robot = RoboyRobot()
+
+    def read_state(self) -> RobotState:
         raise NotImplementedError
 
-    def forward_step_command(self, action) -> MsjRobotState:
+    def forward_step_command(self, action) -> RobotState:
         raise NotImplementedError
 
-    def forward_reset_command(self) -> MsjRobotState:
+    def forward_reset_command(self) -> RobotState:
         raise NotImplementedError
 
     def get_new_goal_joint_angles(self):
         raise NotImplementedError
 
 
-class MockMsjROSProxy(MsjROSProxy):
+class StubROSProxy(ROSProxy):
     """This implementation is a mock for unit testing purposes."""
 
-    def __init__(self):
-        self._state = MsjRobotState.new_random_state()
+    def __init__(self, robot: RoboyRobot):
+        self.robot = robot
+        self._state = self.robot.new_random_state()
 
-    def read_state(self) -> MsjRobotState:
+    def read_state(self) -> RobotState:
         return self._state
 
-    def forward_step_command(self, action) -> MsjRobotState:
-        assert len(action) == MsjRobotState.DIM_ACTION
+    def forward_step_command(self, action) -> RobotState:
+        assert self.robot.get_action_space().shape[0] == len(action)
         if np.allclose(action, 0):
             return self._state
-        return MsjRobotState.new_random_state()
+        return self.robot.new_random_state()
 
-    def forward_reset_command(self) -> MsjRobotState:
-        self._state = MsjRobotState.new_zero_state()
+    def forward_reset_command(self) -> RobotState:
+        self._state = self.robot.new_zero_state()
         return self._state
 
     def get_new_goal_joint_angles(self):
-        return MsjRobotState.new_random_state().joint_angle
+        return self.robot.new_random_state().joint_angle
 
 
-class MsjROSBridgeProxy(MsjROSProxy):
+class ROSBridgeProxy(ROSProxy):
 
     _RCLPY_INITIALIZED = False
 
-    def __init__(self, process_idx: int = 1, timeout_secs: int = 2):
+    def __init__(self, robot: RoboyRobot, process_idx: int = 1, timeout_secs: int = 2):
         if not self._RCLPY_INITIALIZED:
             rclpy.init()
-            MsjROSBridgeProxy._RCLPY_INITIALIZED = True
+            ROSBridgeProxy._RCLPY_INITIALIZED = True
+        self.robot = robot
         self._timeout_secs = timeout_secs
         self._step_size = 0.1
         self.node = rclpy.create_node('gym_rosnode')
@@ -88,10 +92,9 @@ class MsjROSBridgeProxy(MsjROSProxy):
         rclpy.spin_until_future_complete(self.node, future)
         return self._make_robot_state(service_response=future.result())
 
-    @staticmethod
-    def _make_robot_state(service_response) -> MsjRobotState:
+    def _make_robot_state(self, service_response) -> RobotState:
         feasible = service_response.feasible if hasattr(service_response, "feasible") else True
-        return MsjRobotState(
+        return self.robot.new_state(
             joint_angle=service_response.q,
             joint_vel=service_response.qdot,
             is_feasible=feasible,

@@ -1,17 +1,17 @@
+import random
 from itertools import combinations
 
 import numpy as np
 import pytest
 
-from gym_roboy.envs import MsjEnv, MsjRobotState
-from .. import MsjROSBridgeProxy
+from .. import ROSBridgeProxy
+from ..robots import MsjRobot
 
-
-ros_bridge_proxy = MsjROSBridgeProxy()
+ros_bridge_proxy = ROSBridgeProxy(robot=MsjRobot())
 
 
 @pytest.mark.integration
-def test_msj_ros_bridge_proxy_reset():
+def test_ros_bridge_proxy_reset():
     """reset function sets all joint angles to zero in simulation"""
 
     new_robot_state = ros_bridge_proxy.forward_reset_command()
@@ -20,7 +20,7 @@ def test_msj_ros_bridge_proxy_reset():
 
 
 @pytest.mark.integration
-def test_msj_ros_bridge_proxy_step():
+def test_ros_bridge_proxy_step():
     """calling the step function changes the robot state"""
 
     random_action = [0.01, 0.01, 0.01, 0.015, 0.01, 0.02, 0.02, 0.02]
@@ -36,7 +36,7 @@ def test_msj_ros_bridge_proxy_step():
 
 
 @pytest.mark.integration
-def test_msj_ros_bridge_proxy_read_state():
+def test_ros_bridge_proxy_read_state():
     """calling the read state function doesn't change the robot state"""
 
     initial_robot_state = ros_bridge_proxy.read_state()
@@ -47,15 +47,17 @@ def test_msj_ros_bridge_proxy_read_state():
 
 
 @pytest.mark.integration
-def test_msj_ros_bridge_proxy_get_new_goal_joint_angles_results_are_different():
+def test_ros_bridge_proxy_get_new_goal_joint_angles_results_are_different():
     different_joint_angles = [ros_bridge_proxy.get_new_goal_joint_angles() for _ in range(5)]
     for joint_angle1, joint_angle2 in combinations(different_joint_angles, 2):
         assert not np.allclose(joint_angle1, joint_angle2)
 
 
 @pytest.mark.integration
-def test_msj_ros_bridge_proxy_stepping_on_the_boundary_does_not_reset():
-    strong_action = [MsjRobotState.MAX_TENDON_VEL]*4 + [0.0]*(MsjRobotState.DIM_ACTION-4)
+def test_ros_bridge_proxy_stepping_on_the_boundary_does_not_reset():
+    random.seed(0)
+    actions = MsjRobot.get_action_space()
+    strong_action = [float(random.choice(i)) for i in zip(actions.high, actions.low)]
     ros_bridge_proxy.forward_reset_command = lambda: pytest.fail("should not call this")
 
     for _ in range(1000):
@@ -70,7 +72,7 @@ def test_msj_ros_bridge_proxy_stepping_on_the_boundary_does_not_reset():
 
 @pytest.mark.integration
 def test_ros_bridge_proxy_load_test():
-    p = MsjROSBridgeProxy()
+    p = ROSBridgeProxy(robot=MsjRobot())
     for idx in range(100):
         p.forward_reset_command()
         p.get_new_goal_joint_angles()
