@@ -20,7 +20,7 @@ def main():
         agent = PPO2.load(MODEL_FILE, tensorboard_log=RESULTS_DIR)
         agent.set_env(env)
     else:
-        agent = PPO2("MlpPolicy", env, tensorboard_log=RESULTS_DIR)
+        agent = PPO2("MlpPolicy", env, tensorboard_log=RESULTS_DIR, ent_coef=0.1)
 
     while True:
         agent.learn(total_timesteps=TRAINING_STEPS_BETWEEN_BACKUPS)
