@@ -5,10 +5,12 @@ import pytest
 from .. import RoboyEnv, StubROSProxy, ROSBridgeProxy
 from ..robots import RobotState, MsjRobot
 
+
 MSJ_ROBOT = MsjRobot()
 MOCK_ROS_PROXY = StubROSProxy(robot=MSJ_ROBOT)
+MOCK_ROBOY_ENV = RoboyEnv(ros_proxy=MOCK_ROS_PROXY)
 constructors = [
-    lambda: RoboyEnv(ros_proxy=MOCK_ROS_PROXY),
+    lambda: MOCK_ROBOY_ENV,
     pytest.param(lambda: RoboyEnv(ros_proxy=ROSBridgeProxy(robot=MSJ_ROBOT)), marks=pytest.mark.integration)
 ]
 
@@ -159,6 +161,27 @@ def test_roboy_env_reward_monotonously_improves_during_approach(env: RoboyEnv):
             sequence_of_rewards.append(reward)
             current_state = RobotState.interpolate(current_state, goal_state)  # cut distance by half
         assert _strictly_increasing(sequence_of_rewards)
+
+
+def test_roboy_env_maximum_episode_length():
+    env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY)
+    env.reset()
+    env.step_num = env._MAX_EPISODE_LENGTH - 1
+
+    _, _, done, _ = env.step(np.zeros(env.action_space.shape))
+    assert not done
+
+    assert not env._did_complete_successfully(env._last_state, env._goal_state)
+    _, _, done, _ = env.step(env.action_space.sample())
+    assert done
+
+
+def test_roboy_reset_sets_step_number_to_one():
+    MOCK_ROBOY_ENV.step(MOCK_ROBOY_ENV.action_space.sample())
+    assert MOCK_ROBOY_ENV.step_num is not 1
+
+    MOCK_ROBOY_ENV.reset()
+    assert MOCK_ROBOY_ENV.step_num is 1
 
 
 def _strictly_increasing(sequence: Sequence[float]):

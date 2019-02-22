@@ -29,7 +29,8 @@ class RoboyEnv(gym.GoalEnv):
         self._MAX_DISTANCE_JOINT_ANGLE = _l2_distance(robot.get_joint_angles_space().low, robot.get_joint_angles_space().high)
         self._MAX_DISTANCE_JOINT_VELS = _l2_distance(robot.get_joint_vels_space().low, robot.get_joint_vels_space().high)
         self._PENALTY_FOR_TOUCHING_BOUNDARY = 1
-        self._BONUS_FOR_REACHING_GOAL = 10
+        self._BONUS_FOR_REACHING_GOAL = 1000
+        self._MAX_EPISODE_LENGTH = 1000
 
         self.reward_range = self._create_reward_range(robot=robot)
         self.action_space = spaces.Box(low=-1, high=1, shape=robot.get_action_space().shape, dtype="float32")
@@ -38,6 +39,7 @@ class RoboyEnv(gym.GoalEnv):
             high=np.concatenate((robot.get_joint_angles_space().high, robot.get_joint_vels_space().high, robot.get_joint_angles_space().high)),
         )
         self._set_new_goal()
+        self.step_num = 1
 
     def _create_reward_range(self, robot: RoboyRobot) -> Tuple[float, float]:
         some_state = robot.new_state(
@@ -65,14 +67,13 @@ class RoboyEnv(gym.GoalEnv):
         action = action.tolist()
 
         new_state = self._ros_proxy.forward_step_command(action)
+        self.step_num += 1
         self._last_state = new_state
         obs = self._make_obs(robot_state=new_state)
         info = {}
         reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
-        done = self._did_complete_successfully(current_state=new_state, goal_state=self._goal_state)
+        done = self._did_complete_successfully(current_state=new_state, goal_state=self._goal_state) or self.step_num > self._MAX_EPISODE_LENGTH
         if done:
-            print("#############GOAL REACHED#############")
-
             self._set_new_goal()
 
         return obs, reward, done, info
@@ -87,6 +88,7 @@ class RoboyEnv(gym.GoalEnv):
     def reset(self):
         self._ros_proxy.forward_reset_command()
         self._last_state = self._ros_proxy.read_state()
+        self.step_num = 1
         return self._make_obs(robot_state=self._last_state)
 
     def render(self, mode='human'):
@@ -129,4 +131,6 @@ class RoboyEnv(gym.GoalEnv):
         vels_l2_distance = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
         vels_are_close = bool(vels_l2_distance < self._MAX_DISTANCE_JOINT_VELS/100)  # fraction not yet tuned
 
+        if angles_are_close and vels_are_close:
+            print("#############GOAL REACHED#############")
         return angles_are_close and vels_are_close
