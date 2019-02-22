@@ -6,7 +6,7 @@ from stable_baselines import PPO2
 from .envs import RoboyEnv, ROSBridgeProxy
 from .envs.robots import MsjRobot
 
-
+TRAINING_STEPS_BETWEEN_BACKUPS = 1000000
 RESULTS_DIR = "./training_results"
 MODEL_FILE = "./model.pkl"
 
@@ -23,7 +23,7 @@ def main():
         agent = PPO2("MlpPolicy", env, tensorboard_log=RESULTS_DIR)
 
     while True:
-        agent.learn(total_timesteps=1000000)
+        agent.learn(total_timesteps=TRAINING_STEPS_BETWEEN_BACKUPS)
         agent.save(MODEL_FILE)
 
 
