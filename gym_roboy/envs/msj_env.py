@@ -38,7 +38,6 @@ class MsjEnv(gym.GoalEnv):
     def __init__(self, ros_proxy: MsjROSProxy,
                  seed: int = None, joint_vel_penalty: bool = False, is_tendon_vel_dependent_on_distance: bool = False,
                  is_agent_getting_bonus_for_reaching_goal: bool = False):
-
         self.seed(seed)
         self._ros_proxy = ros_proxy
         self._set_new_goal()

@@ -6,6 +6,8 @@ import rclpy
 from roboy_simulation_msgs.srv import GymStep
 from roboy_simulation_msgs.srv import GymReset
 from roboy_simulation_msgs.srv import GymGoal
+from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
+import multiprocessing
 from typeguard import typechecked
 
 from .msj_robot_state import MsjRobotState
@@ -56,13 +58,15 @@ class MsjROSBridgeProxy(MsjROSProxy):
 
     _RCLPY_INITIALIZED = False
 
-    def __init__(self, process_idx: int = 1, timeout_secs: int = 2):
+    def __init__(self, process_idx: int = 1, timeout_secs: int = 2, num_cpu: int = None):
         if not self._RCLPY_INITIALIZED:
             rclpy.init()
             MsjROSBridgeProxy._RCLPY_INITIALIZED = True
         self._timeout_secs = timeout_secs
         self._step_size = 0.1
-        self.node = rclpy.create_node('gym_rosnode')
+        self._executor = MultiThreadedExecutor(num_threads=num_cpu)
+        self.node = rclpy.create_node("gym_rosnode")
+        self._executor.add_node(node=self.node)
         self._create_ros_client(process_idx)
         self._last_time_gym_goal_service_was_called = datetime.now()
 
