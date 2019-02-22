@@ -91,6 +91,7 @@ class RoboyEnv(gym.GoalEnv):
         self._ros_proxy.forward_reset_command()
         self._last_state = self._ros_proxy.read_state()
         self.step_num = 1
+        self._set_new_goal()
         return self._make_obs(robot_state=self._last_state)
 
     def render(self, mode='human'):

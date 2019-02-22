@@ -31,15 +31,17 @@ def test_roboy_env_step(roboy_env):
     assert isinstance(done, bool), str(type(done))
 
 
-def test_roboy_env_reset(roboy_env):
+def test_roboy_env_reset(roboy_env: RoboyEnv):
+    num_zero_indices = 2 * MSJ_ROBOT.get_joint_angles_space().shape[0]
+
     all_obs = [roboy_env.reset() for _ in range(5)]
 
     for obs in all_obs:
-        assert np.allclose(obs[:6], 0)
+        assert np.allclose(obs[:num_zero_indices], 0)
         assert isinstance(obs, np.ndarray)
 
     for obs1, obs2 in combinations(all_obs, 2):
-        assert np.allclose(obs1, obs2)
+        assert np.allclose(obs1[:num_zero_indices], obs2[:num_zero_indices])
 
 
 def test_roboy_env_new_goal_is_different_and_feasible(roboy_env: RoboyEnv):

@@ -48,3 +48,13 @@ def test_robot_normalize_max_state():
     normed_min_state = MSJ_ROBOT.normalize_state(state=MSJ_ROBOT.new_min_state())
     assert np.allclose(normed_min_state.joint_angles, -max_angles)
     assert np.allclose(normed_min_state.joint_vels, -max_vels)
+
+
+def test_normalize_between_1_and_minus1():
+    high = np.random.random()
+    low = high - np.abs(np.random.random())
+
+    high_norm = MSJ_ROBOT._normalize_between_minus1_and1(high, max_val=high, min_val=low)
+    assert np.isclose(1, high_norm), high_norm
+    low_norm = MsjRobot._normalize_between_minus1_and1(low, max_val=high, min_val=low)
+    assert np.isclose(-1, low_norm), low_norm
