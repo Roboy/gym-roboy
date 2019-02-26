@@ -7,11 +7,11 @@ from ..robots import RobotState, MsjRobot
 
 
 MSJ_ROBOT = MsjRobot()
-MOCK_ROS_PROXY = StubSimulationClient(robot=MSJ_ROBOT)
-MOCK_ROBOY_ENV = RoboyEnv(ros_proxy=MOCK_ROS_PROXY)
+MOCK_SIM_CLIENT = StubSimulationClient(robot=MSJ_ROBOT)
+MOCK_ROBOY_ENV = RoboyEnv(simulation_client=MOCK_SIM_CLIENT)
 constructors = [
     lambda: MOCK_ROBOY_ENV,
-    pytest.param(lambda: RoboyEnv(ros_proxy=RosSimulationClient(robot=MSJ_ROBOT)), marks=pytest.mark.integration)
+    pytest.param(lambda: RoboyEnv(simulation_client=RosSimulationClient(robot=MSJ_ROBOT)), marks=pytest.mark.integration)
 ]
 
 
@@ -78,12 +78,12 @@ def test_roboy_env_reaching_goal_joint_angle_but_moving_returns_done_equals_fals
 
 
 def test_roboy_env_joint_vel_penalty_affects_worst_possible_reward():
-    env = RoboyEnv(ros_proxy=StubSimulationClient(robot=MSJ_ROBOT), joint_vel_penalty=False)
+    env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT, joint_vel_penalty=False)
     largest_distance = np.linalg.norm(2 * np.ones(MSJ_ROBOT.get_joint_angles_space().shape))
     worst_possible_reward_from_angles = -np.exp(largest_distance) - abs(env._PENALTY_FOR_TOUCHING_BOUNDARY)
     assert np.isclose(env.reward_range[0], worst_possible_reward_from_angles)
 
-    env = RoboyEnv(ros_proxy=StubSimulationClient(robot=MSJ_ROBOT), joint_vel_penalty=True)
+    env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT, joint_vel_penalty=True)
     assert env.reward_range[0] < worst_possible_reward_from_angles
 
 
@@ -91,14 +91,14 @@ def test_roboy_env_reward_is_lower_with_joint_vel_penalty():
     new_goal_state = MsjRobot.new_random_state()
     new_goal_state.joint_vels = np.zeros_like(new_goal_state.joint_vels)
 
-    MOCK_ROS_PROXY.forward_step_command = lambda a: new_goal_state
-    env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY, joint_vel_penalty=False)
+    MOCK_SIM_CLIENT.forward_step_command = lambda a: new_goal_state
+    env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT, joint_vel_penalty=False)
     env.reset()
     env._set_new_goal(goal_joint_angle=new_goal_state.joint_angles)
     some_action = env.action_space.sample()
     _, reward_with_no_joint_vel_penalty, _, _ = env.step(action=some_action)
 
-    env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY, joint_vel_penalty=True)
+    env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT, joint_vel_penalty=True)
     env.reset()
     env._set_new_goal(goal_joint_angle=new_goal_state.joint_angles)
     _, reward_with_joint_vel_penalty, _, _ = env.step(action=some_action)
@@ -107,12 +107,12 @@ def test_roboy_env_reward_is_lower_with_joint_vel_penalty():
 
 
 def test_roboy_env_agent_gets_bonus_when_reaching_the_goal():
-    roboy_env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY, is_agent_getting_bonus_for_reaching_goal=False)
+    roboy_env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT, is_agent_getting_bonus_for_reaching_goal=False)
     roboy_env.reset()
     reward_no_bonus = roboy_env.compute_reward(
         current_state=roboy_env._goal_state, goal_state=roboy_env._goal_state)
 
-    roboy_env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY, is_agent_getting_bonus_for_reaching_goal=True)
+    roboy_env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT, is_agent_getting_bonus_for_reaching_goal=True)
     roboy_env.reset()
     reward_with_bonus = roboy_env.compute_reward(
         current_state=roboy_env._goal_state, goal_state=roboy_env._goal_state)
@@ -126,8 +126,8 @@ def test_roboy_env_render_does_nothing(roboy_env):
 
 @pytest.mark.parametrize(
     "env",
-    [RoboyEnv(ros_proxy=MOCK_ROS_PROXY, joint_vel_penalty=True),
-     RoboyEnv(ros_proxy=MOCK_ROS_PROXY, joint_vel_penalty=False)],
+    [RoboyEnv(simulation_client=MOCK_SIM_CLIENT, joint_vel_penalty=True),
+     RoboyEnv(simulation_client=MOCK_SIM_CLIENT, joint_vel_penalty=False)],
     ids=["with joint_vel penalty", "no joint_vel penalty"]
 )
 def test_roboy_env_reward_monotonously_improves_during_approach(env: RoboyEnv):
@@ -166,7 +166,7 @@ def test_roboy_env_reward_monotonously_improves_during_approach(env: RoboyEnv):
 
 
 def test_roboy_env_maximum_episode_length():
-    env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY)
+    env = RoboyEnv(simulation_client=MOCK_SIM_CLIENT)
     env.reset()
     env.step_num = env._MAX_EPISODE_LENGTH - 1
 

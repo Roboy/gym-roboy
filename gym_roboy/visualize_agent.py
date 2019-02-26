@@ -27,7 +27,7 @@ class Logger:
 def main():
     logger = Logger()
     # The algorithms require a vectorized environment to run
-    env_constructor = lambda: RoboyEnv(ros_proxy=RosSimulationClient(robot=MsjRobot()))
+    env_constructor = lambda: RoboyEnv(simulation_client=RosSimulationClient(robot=MsjRobot()))
     env = DummyVecEnv([env_constructor])
 
     agent = PPO2.load(MODEL_FILE)

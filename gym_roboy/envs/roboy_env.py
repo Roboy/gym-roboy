@@ -2,7 +2,7 @@ from typing import Tuple
 import numpy as np
 import gym
 from gym import spaces
-from . import RosSimulationClient
+from . import SimulationClient
 from .robots import RobotState, RoboyRobot
 
 
@@ -14,16 +14,16 @@ def _l2_distance(joint_angle1, joint_angle2):
 
 class RoboyEnv(gym.GoalEnv):
 
-    def __init__(self, ros_proxy: RosSimulationClient, seed: int = None,
+    def __init__(self, simulation_client: SimulationClient, seed: int = None,
                  joint_vel_penalty: bool = False,
                  is_tendon_vel_dependent_on_distance: bool = True,
                  is_agent_getting_bonus_for_reaching_goal: bool = True):
         self.seed(seed)
-        self._ros_proxy = ros_proxy
+        self._simulation_client = simulation_client
         self._joint_vel_penalty = joint_vel_penalty
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
         self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
-        self._robot = robot = ros_proxy.robot
+        self._robot = robot = simulation_client.robot
         self._last_state = None  # type: RobotState
         self._goal_state = None  # type: RobotState
 
@@ -68,7 +68,7 @@ class RoboyEnv(gym.GoalEnv):
 
         action = action.tolist()
 
-        new_state = self._ros_proxy.forward_step_command(action)
+        new_state = self._simulation_client.forward_step_command(action)
         self.step_num += 1
         self._last_state = new_state
         obs = self._make_obs(robot_state=new_state)
@@ -88,8 +88,8 @@ class RoboyEnv(gym.GoalEnv):
         ])
 
     def reset(self):
-        self._ros_proxy.forward_reset_command()
-        self._last_state = self._ros_proxy.read_state()
+        self._simulation_client.forward_reset_command()
+        self._last_state = self._simulation_client.read_state()
         self.step_num = 1
         self._set_new_goal()
         return self._make_obs(robot_state=self._last_state)
@@ -122,7 +122,7 @@ class RoboyEnv(gym.GoalEnv):
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""
         new_joint_angle = goal_joint_angle if goal_joint_angle is not None \
-            else self._ros_proxy.get_new_goal_joint_angles()
+            else self._simulation_client.get_new_goal_joint_angles()
         self._goal_state = self._robot.new_state(joint_angle=new_joint_angle,
                                                  joint_vel=self._GOAL_JOINT_VEL,
                                                  is_feasible=True)
