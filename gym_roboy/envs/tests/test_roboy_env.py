@@ -143,15 +143,15 @@ def test_roboy_env_reward_monotonously_improves_during_approach(env: RoboyEnv):
     num_starting_states = 40  # roughly covers many points in the space
     num_steps = 7  # distance to goal halves at every step
 
-    goal_state = MSJ_ROBOT.new_random_zero_vel_state()
+    goal_state = MSJ_ROBOT.new_random_zero_vels_state()
 
     starting_states = [MSJ_ROBOT.new_random_state() for _ in range(num_starting_states)]
 
     # special cases
-    state_with_improvable_angles = MSJ_ROBOT.new_random_zero_vel_state()
+    state_with_improvable_angles = MSJ_ROBOT.new_random_zero_vels_state()
     starting_states.append(state_with_improvable_angles)
     if env._joint_vel_penalty:
-        state_with_improvable_vels = MSJ_ROBOT.new_random_zero_angle_state()
+        state_with_improvable_vels = MSJ_ROBOT.new_random_zero_angles_state()
         starting_states.append(state_with_improvable_vels)
 
     for current_state in starting_states:

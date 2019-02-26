@@ -14,13 +14,13 @@ def test_msj_robot_state_interpolate():
 
 
 def test_msj_robot_state_new_random_zero_angle_state():
-    zero_angle_state = MsjRobot.new_random_zero_angle_state()
+    zero_angle_state = MsjRobot.new_random_zero_angles_state()
     assert np.allclose(zero_angle_state.joint_angles, 0)
     assert not np.allclose(zero_angle_state.joint_vels, 0)
 
 
 def test_msj_robot_state_new_random_zero_vel_state():
-    zero_vel_state = MsjRobot.new_random_zero_vel_state()
+    zero_vel_state = MsjRobot.new_random_zero_vels_state()
     assert np.allclose(zero_vel_state.joint_vels, 0)
     assert not np.allclose(zero_vel_state.joint_angles, 0)
 

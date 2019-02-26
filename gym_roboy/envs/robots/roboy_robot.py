@@ -45,7 +45,7 @@ class RoboyRobot:
                           is_feasible=True)
 
     @classmethod
-    def new_random_zero_vel_state(cls) -> RobotState:
+    def new_random_zero_vels_state(cls) -> RobotState:
         return RobotState(joint_angles=cls.get_joint_angles_space().sample(),
                           joint_vels=np.zeros(cls.get_joint_vels_space().shape),
                           is_feasible=True)
@@ -63,7 +63,7 @@ class RoboyRobot:
                           is_feasible=False)
 
     @classmethod
-    def new_random_zero_angle_state(cls) -> RobotState:
+    def new_random_zero_angles_state(cls) -> RobotState:
         return RobotState(joint_angles=np.zeros(cls.get_joint_angles_space().shape),
                           joint_vels=cls.get_joint_vels_space().sample(),
                           is_feasible=True)
