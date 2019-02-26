@@ -15,8 +15,8 @@ def test_ros_bridge_proxy_reset():
     """reset function sets all joint angles to zero in simulation"""
 
     new_robot_state = ros_bridge_proxy.forward_reset_command()
-    assert np.allclose([0, 0, 0], new_robot_state.joint_angle)
-    assert np.allclose([0, 0, 0], new_robot_state.joint_vel)
+    assert np.allclose([0, 0, 0], new_robot_state.joint_angles)
+    assert np.allclose([0, 0, 0], new_robot_state.joint_vels)
 
 
 @pytest.mark.integration
@@ -28,10 +28,10 @@ def test_ros_bridge_proxy_step():
 
     new_robot_state = ros_bridge_proxy.forward_step_command(random_action)
 
-    for x, y in zip(initial_robot_state.joint_angle, new_robot_state.joint_angle):
+    for x, y in zip(initial_robot_state.joint_angles, new_robot_state.joint_angles):
         assert np.abs(x - y) > 0.00001
 
-    for x, y in zip(initial_robot_state.joint_vel, new_robot_state.joint_vel):
+    for x, y in zip(initial_robot_state.joint_vels, new_robot_state.joint_vels):
         assert (np.abs(x - y) > 0.00001 or np.abs(x - y) == 0)
 
 
@@ -42,8 +42,8 @@ def test_ros_bridge_proxy_read_state():
     initial_robot_state = ros_bridge_proxy.read_state()
     new_robot_state = ros_bridge_proxy.read_state()
 
-    assert np.allclose(initial_robot_state.joint_angle, new_robot_state.joint_angle)
-    assert np.allclose(initial_robot_state.joint_vel, new_robot_state.joint_vel)
+    assert np.allclose(initial_robot_state.joint_angles, new_robot_state.joint_angles)
+    assert np.allclose(initial_robot_state.joint_vels, new_robot_state.joint_vels)
 
 
 @pytest.mark.integration

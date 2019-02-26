@@ -48,14 +48,14 @@ def test_roboy_env_new_goal_is_different_and_feasible(roboy_env: RoboyEnv):
         old_goal = roboy_env._goal_state
         roboy_env._set_new_goal()
         new_goal = roboy_env._goal_state
-        assert not np.allclose(old_goal.joint_angle, new_goal.joint_angle)
-        assert np.all(MSJ_ROBOT.get_joint_angles_space().low <= roboy_env._goal_state.joint_angle)
-        assert np.all(roboy_env._goal_state.joint_angle <= MSJ_ROBOT.get_joint_angles_space().high)
+        assert not np.allclose(old_goal.joint_angles, new_goal.joint_angles)
+        assert np.all(MSJ_ROBOT.get_joint_angles_space().low <= roboy_env._goal_state.joint_angles)
+        assert np.all(roboy_env._goal_state.joint_angles <= MSJ_ROBOT.get_joint_angles_space().high)
 
 
 def test_roboy_env_reaching_goal_angle_delivers_maximum_reward(roboy_env: RoboyEnv):
     roboy_env.reset()
-    current_joint_angles = roboy_env._last_state.joint_angle
+    current_joint_angles = roboy_env._last_state.joint_angles
     roboy_env._set_new_goal(goal_joint_angle=current_joint_angles)
     zero_action = np.zeros(len(roboy_env.action_space.low))
     _, reward, done, _ = roboy_env.step(zero_action)
@@ -66,10 +66,10 @@ def test_roboy_env_reaching_goal_angle_delivers_maximum_reward(roboy_env: RoboyE
 
 def test_roboy_env_reaching_goal_joint_angle_but_moving_returns_done_equals_false(roboy_env: RoboyEnv):
     roboy_env.reset()
-    current_joint_angles = roboy_env._last_state.joint_angle
+    current_joint_angles = roboy_env._last_state.joint_angles
     roboy_env._set_new_goal(goal_joint_angle=current_joint_angles)
 
-    roboy_env._last_state.joint_vel = MSJ_ROBOT.get_joint_vels_space().high
+    roboy_env._last_state.joint_vels = MSJ_ROBOT.get_joint_vels_space().high
 
     assert not roboy_env._did_complete_successfully(current_state=roboy_env._last_state,
                                                   goal_state=roboy_env._goal_state)
@@ -87,18 +87,18 @@ def test_roboy_env_joint_vel_penalty_affects_worst_possible_reward():
 
 def test_roboy_env_reward_is_lower_with_joint_vel_penalty():
     new_goal_state = MsjRobot.new_random_state()
-    new_goal_state.joint_vel = np.zeros_like(new_goal_state.joint_vel)
+    new_goal_state.joint_vels = np.zeros_like(new_goal_state.joint_vels)
 
     MOCK_ROS_PROXY.forward_step_command = lambda a: new_goal_state
     env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY, joint_vel_penalty=False)
     env.reset()
-    env._set_new_goal(goal_joint_angle=new_goal_state.joint_angle)
+    env._set_new_goal(goal_joint_angle=new_goal_state.joint_angles)
     some_action = env.action_space.sample()
     _, reward_with_no_joint_vel_penalty, _, _ = env.step(action=some_action)
 
     env = RoboyEnv(ros_proxy=MOCK_ROS_PROXY, joint_vel_penalty=True)
     env.reset()
-    env._set_new_goal(goal_joint_angle=new_goal_state.joint_angle)
+    env._set_new_goal(goal_joint_angle=new_goal_state.joint_angles)
     _, reward_with_joint_vel_penalty, _, _ = env.step(action=some_action)
 
     assert reward_with_no_joint_vel_penalty > reward_with_joint_vel_penalty

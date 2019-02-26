@@ -24,8 +24,10 @@ class RoboyEnv(gym.GoalEnv):
         self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
         self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
         self._robot = robot = ros_proxy.robot
+        self._last_state = None  # type: RobotState
+        self._goal_state = None  # type: RobotState
 
-        self._GOAL_JOINT_VEL = robot.new_zero_state().joint_angle
+        self._GOAL_JOINT_VEL = robot.new_zero_state().joint_angles
         self._MAX_DISTANCE_JOINT_ANGLE = _l2_distance(robot.get_joint_angles_space().low, robot.get_joint_angles_space().high)
         self._MAX_DISTANCE_JOINT_VELS = _l2_distance(robot.get_joint_vels_space().low, robot.get_joint_vels_space().high)
         self._PENALTY_FOR_TOUCHING_BOUNDARY = 1
@@ -56,7 +58,7 @@ class RoboyEnv(gym.GoalEnv):
         assert self.action_space.contains(action)
 
         if self._is_tendon_vel_dependent_on_distance:
-            distance_to_target = _l2_distance(self._last_state.joint_angle, self._goal_state.joint_angle)
+            distance_to_target = _l2_distance(self._last_state.joint_angles, self._goal_state.joint_angles)
             scale_factor = np.power(distance_to_target / self._MAX_DISTANCE_JOINT_ANGLE, 1/4)
             current_max_tendon_speed = scale_factor * self._robot.get_action_space().high
             action = np.multiply(current_max_tendon_speed, action)
@@ -80,9 +82,9 @@ class RoboyEnv(gym.GoalEnv):
 
     def _make_obs(self, robot_state: RobotState):
         return np.concatenate([
-            robot_state.joint_angle,
-            robot_state.joint_vel,
-            self._goal_state.joint_angle,
+            robot_state.joint_angles,
+            robot_state.joint_vels,
+            self._goal_state.joint_angles,
         ])
 
     def reset(self):
@@ -98,10 +100,10 @@ class RoboyEnv(gym.GoalEnv):
 
         current_state = self._robot.normalize_state(current_state)
         goal_state = self._robot.normalize_state(goal_state)
-        reward = -np.exp(_l2_distance(current_state.joint_angle, goal_state.joint_angle))
+        reward = -np.exp(_l2_distance(current_state.joint_angles, goal_state.joint_angles))
 
         if self._joint_vel_penalty:
-            normed_joint_vel = np.linalg.norm(current_state.joint_vel - goal_state.joint_vel)
+            normed_joint_vel = np.linalg.norm(current_state.joint_vels - goal_state.joint_vels)
             reward = (normed_joint_vel+1) * (reward-np.exp(reward))
 
         if not current_state.is_feasible:
@@ -125,10 +127,10 @@ class RoboyEnv(gym.GoalEnv):
                                                  is_feasible=True)
 
     def _did_complete_successfully(self, current_state: RobotState, goal_state: RobotState) -> bool:
-        angles_l2_distance = _l2_distance(current_state.joint_angle, goal_state.joint_angle)
+        angles_l2_distance = _l2_distance(current_state.joint_angles, goal_state.joint_angles)
         angles_are_close = bool(angles_l2_distance < self._MAX_DISTANCE_JOINT_ANGLE/500)  # cast from numpy.bool to bool
 
-        vels_l2_distance = _l2_distance(current_state.joint_vel, goal_state.joint_vel)
+        vels_l2_distance = _l2_distance(current_state.joint_vels, goal_state.joint_vels)
         vels_are_close = bool(vels_l2_distance < self._MAX_DISTANCE_JOINT_VELS/100)  # fraction not yet tuned
 
         if angles_are_close and vels_are_close:

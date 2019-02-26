@@ -52,7 +52,7 @@ class StubROSProxy(ROSProxy):
         return self._state
 
     def get_new_goal_joint_angles(self):
-        return self.robot.new_random_state().joint_angle
+        return self.robot.new_random_state().joint_angles
 
 
 class ROSBridgeProxy(ROSProxy):
