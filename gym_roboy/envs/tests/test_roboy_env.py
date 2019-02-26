@@ -2,9 +2,10 @@ from typing import Sequence
 import numpy as np
 from itertools import combinations
 import pytest
-from .. import RoboyEnv
+from gym import spaces
 from ..simulations import StubSimulationClient, RosSimulationClient
 from ..robots import RobotState, MsjRobot
+from ..roboy_env import RoboyEnv, _rescale_from_one_space_to_other
 
 
 MSJ_ROBOT = MsjRobot()
@@ -189,3 +190,24 @@ def test_roboy_reset_sets_step_number_to_one():
 
 def _strictly_increasing(sequence: Sequence[float]):
     return all(x < y for x, y in zip(sequence, sequence[1:]))
+
+
+def test_roboy_env_rescale_from_one_space_to_other():
+    np.random.seed(0)
+    input_space = _create_random_space()
+    output_space = _create_random_space()
+
+    expected_output_space_high = _rescale_from_one_space_to_other(
+        input_space=input_space, output_space=output_space, input_val=input_space.high)
+    print(input_space.high, input_space.low)
+    assert np.allclose(expected_output_space_high, output_space.high)
+
+    expected_output_space_low = _rescale_from_one_space_to_other(
+        input_space=input_space, output_space=output_space, input_val=input_space.low)
+    assert np.allclose(expected_output_space_low, output_space.low)
+
+
+def _create_random_space() -> spaces.Box:
+    dim = MOCK_ROBOY_ENV.action_space.shape[0]
+    return spaces.Box(low=-np.random.uniform(size=dim),
+                      high=np.random.uniform(size=dim), dtype="float32")

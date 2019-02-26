@@ -3,25 +3,18 @@ import numpy as np
 import gym
 from gym import spaces
 from .simulations import SimulationClient
+from typeguard import typechecked
 from .robots import RobotState, RoboyRobot
-
-
-def _l2_distance(joint_angle1, joint_angle2):
-    subtract = np.subtract(joint_angle1, joint_angle2)
-    subtract[np.isnan(subtract)] = 0  # np.inf - np.inf returns np.nan, but should be 0
-    return np.linalg.norm(subtract, ord=2)
 
 
 class RoboyEnv(gym.GoalEnv):
 
     def __init__(self, simulation_client: SimulationClient, seed: int = None,
                  joint_vel_penalty: bool = False,
-                 is_tendon_vel_dependent_on_distance: bool = True,
                  is_agent_getting_bonus_for_reaching_goal: bool = True):
         self.seed(seed)
         self._simulation_client = simulation_client
         self._joint_vel_penalty = joint_vel_penalty
-        self._is_tendon_vel_dependent_on_distance = is_tendon_vel_dependent_on_distance
         self._is_agent_getting_bonus_for_reaching_goal = is_agent_getting_bonus_for_reaching_goal
         self._robot = robot = simulation_client.robot
         self._last_state = None  # type: RobotState
@@ -58,16 +51,10 @@ class RoboyEnv(gym.GoalEnv):
     def step(self, action):
         assert self.action_space.contains(action)
 
-        if self._is_tendon_vel_dependent_on_distance:
-            distance_to_target = _l2_distance(self._last_state.joint_angles, self._goal_state.joint_angles)
-            scale_factor = np.power(distance_to_target / self._MAX_DISTANCE_JOINT_ANGLE, 1/4)
-            current_max_tendon_speed = scale_factor * self._robot.get_action_space().high
-            action = np.multiply(current_max_tendon_speed, action)
-
-        else:
-            action = np.multiply(self._robot.get_action_space().high, action)
-
-        action = action.tolist()
+        action = _rescale_from_one_space_to_other(
+            input_space=self.action_space,
+            output_space=self._robot.get_action_space(),
+            input_val=np.array(action)).tolist()
 
         new_state = self._simulation_client.forward_step_command(action)
         self.step_num += 1
@@ -75,7 +62,8 @@ class RoboyEnv(gym.GoalEnv):
         obs = self._make_obs(robot_state=new_state)
         info = {}
         reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
-        done = self._did_complete_successfully(current_state=new_state, goal_state=self._goal_state) or self.step_num > self._MAX_EPISODE_LENGTH
+        done = self._did_complete_successfully(current_state=new_state, goal_state=self._goal_state) or \
+               self.step_num > self._MAX_EPISODE_LENGTH
         if done:
             self._set_new_goal()
 
@@ -141,3 +129,18 @@ class RoboyEnv(gym.GoalEnv):
         if angles_are_close and vels_are_close:
             print("#############GOAL REACHED#############")
         return angles_are_close and vels_are_close
+
+
+def _l2_distance(joint_angle1, joint_angle2):
+    subtract = np.subtract(joint_angle1, joint_angle2)
+    subtract[np.isnan(subtract)] = 0  # np.inf - np.inf returns np.nan, but should be 0
+    return np.linalg.norm(subtract, ord=2)
+
+
+@typechecked
+def _rescale_from_one_space_to_other(
+        input_space: spaces.Box, output_space: spaces.Box, input_val: np.ndarray) -> np.ndarray:
+    assert input_space.shape == output_space.shape
+    assert input_space.contains(input_val)
+    slope = (output_space.high-output_space.low) / (input_space.high-input_space.low)
+    return slope * (input_val - input_space.high) + output_space.high
