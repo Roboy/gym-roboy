@@ -11,7 +11,7 @@ from typeguard import typechecked
 from .robots import RobotState, RoboyRobot
 
 
-class ROSProxy:
+class SimulationClient:
     """
     This interface defines how the RoboyEnv interacts with the Roboy Robot.
     One implementation will use the ROS1 service over ROS2 bridge.
@@ -31,8 +31,8 @@ class ROSProxy:
         raise NotImplementedError
 
 
-class StubROSProxy(ROSProxy):
-    """This implementation is a mock for unit testing purposes."""
+class StubSimulationClient(SimulationClient):
+    """This implementation is a stub for unit testing purposes."""
 
     def __init__(self, robot: RoboyRobot):
         self.robot = robot
@@ -55,14 +55,14 @@ class StubROSProxy(ROSProxy):
         return self.robot.new_random_state().joint_angles
 
 
-class ROSBridgeProxy(ROSProxy):
+class RosSimulationClient(SimulationClient):
 
     _RCLPY_INITIALIZED = False
 
     def __init__(self, robot: RoboyRobot, process_idx: int = 1, timeout_secs: int = 2):
         if not self._RCLPY_INITIALIZED:
             rclpy.init()
-            ROSBridgeProxy._RCLPY_INITIALIZED = True
+            RosSimulationClient._RCLPY_INITIALIZED = True
         self.robot = robot
         self._timeout_secs = timeout_secs
         self._step_size = 0.1

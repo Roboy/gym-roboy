@@ -4,7 +4,7 @@ import sys
 import gym
 from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines import PPO2
-from .envs import RoboyEnv, ROSBridgeProxy
+from .envs import RoboyEnv, RosSimulationClient
 from .envs.robots import MsjRobot
 
 
@@ -17,7 +17,7 @@ TRAINING_STEPS_BETWEEN_BACKUPS = 1000000
 
 def setup_constructor(rank, seed=0):
     def our_env_constructor() -> gym.Env:
-        environment = RoboyEnv(ROSBridgeProxy(process_idx= rank, robot=MsjRobot()))
+        environment = RoboyEnv(RosSimulationClient(process_idx= rank, robot=MsjRobot()))
         environment.seed(seed + rank)
         return environment
 

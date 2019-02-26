@@ -10,7 +10,7 @@ assert os.path.isfile(MODEL_FILE), "File not found: '{}'".format(MODEL_FILE)
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO2
 
-from .envs import RoboyEnv, ROSBridgeProxy
+from .envs import RoboyEnv, RosSimulationClient
 from .envs.robots import MsjRobot
 
 
@@ -27,7 +27,7 @@ class Logger:
 def main():
     logger = Logger()
     # The algorithms require a vectorized environment to run
-    env_constructor = lambda: RoboyEnv(ros_proxy=ROSBridgeProxy(robot=MsjRobot()))
+    env_constructor = lambda: RoboyEnv(ros_proxy=RosSimulationClient(robot=MsjRobot()))
     env = DummyVecEnv([env_constructor])
 
     agent = PPO2.load(MODEL_FILE)

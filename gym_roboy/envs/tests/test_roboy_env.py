@@ -2,16 +2,16 @@ from typing import Sequence
 import numpy as np
 from itertools import combinations
 import pytest
-from .. import RoboyEnv, StubROSProxy, ROSBridgeProxy
+from .. import RoboyEnv, StubSimulationClient, RosSimulationClient
 from ..robots import RobotState, MsjRobot
 
 
 MSJ_ROBOT = MsjRobot()
-MOCK_ROS_PROXY = StubROSProxy(robot=MSJ_ROBOT)
+MOCK_ROS_PROXY = StubSimulationClient(robot=MSJ_ROBOT)
 MOCK_ROBOY_ENV = RoboyEnv(ros_proxy=MOCK_ROS_PROXY)
 constructors = [
     lambda: MOCK_ROBOY_ENV,
-    pytest.param(lambda: RoboyEnv(ros_proxy=ROSBridgeProxy(robot=MSJ_ROBOT)), marks=pytest.mark.integration)
+    pytest.param(lambda: RoboyEnv(ros_proxy=RosSimulationClient(robot=MSJ_ROBOT)), marks=pytest.mark.integration)
 ]
 
 
@@ -78,12 +78,12 @@ def test_roboy_env_reaching_goal_joint_angle_but_moving_returns_done_equals_fals
 
 
 def test_roboy_env_joint_vel_penalty_affects_worst_possible_reward():
-    env = RoboyEnv(ros_proxy=StubROSProxy(robot=MSJ_ROBOT), joint_vel_penalty=False)
+    env = RoboyEnv(ros_proxy=StubSimulationClient(robot=MSJ_ROBOT), joint_vel_penalty=False)
     largest_distance = np.linalg.norm(2 * np.ones(MSJ_ROBOT.get_joint_angles_space().shape))
     worst_possible_reward_from_angles = -np.exp(largest_distance) - abs(env._PENALTY_FOR_TOUCHING_BOUNDARY)
     assert np.isclose(env.reward_range[0], worst_possible_reward_from_angles)
 
-    env = RoboyEnv(ros_proxy=StubROSProxy(robot=MSJ_ROBOT), joint_vel_penalty=True)
+    env = RoboyEnv(ros_proxy=StubSimulationClient(robot=MSJ_ROBOT), joint_vel_penalty=True)
     assert env.reward_range[0] < worst_possible_reward_from_angles
 
 

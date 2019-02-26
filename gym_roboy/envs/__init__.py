@@ -1,2 +1,2 @@
-from .ros_proxy import ROSProxy, ROSBridgeProxy, StubROSProxy
+from .simulation_client import RosSimulationClient, RosSimulationClient, StubSimulationClient
 from .roboy_env import RoboyEnv

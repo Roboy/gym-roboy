@@ -2,7 +2,7 @@ from typing import Tuple
 import numpy as np
 import gym
 from gym import spaces
-from . import ROSProxy
+from . import RosSimulationClient
 from .robots import RobotState, RoboyRobot
 
 
@@ -14,7 +14,7 @@ def _l2_distance(joint_angle1, joint_angle2):
 
 class RoboyEnv(gym.GoalEnv):
 
-    def __init__(self, ros_proxy: ROSProxy, seed: int = None,
+    def __init__(self, ros_proxy: RosSimulationClient, seed: int = None,
                  joint_vel_penalty: bool = False,
                  is_tendon_vel_dependent_on_distance: bool = True,
                  is_agent_getting_bonus_for_reaching_goal: bool = True):
