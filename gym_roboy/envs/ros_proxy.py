@@ -76,14 +76,6 @@ class ROSBridgeProxy(ROSProxy):
         self.goal_client = self.node.create_client(GymGoal, '/instance' + str(process_idx) + '/gym_goal')
         self.read_state_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_read_state')
 
-    def _log_robot_state(self, robot_state):
-        q_pos = robot_state.q
-        q_vel = robot_state.qdot
-        qpos_str = str(q_pos).strip('[]')
-        qvel_str = str(q_vel).strip('[]')
-        self.node.get_logger().info("joint angles: %s" % qpos_str)
-        self.node.get_logger().info("joint velocity: %s" % qvel_str)
-
     def forward_reset_command(self):
         self._check_service_available_or_timeout(self.reset_client)
         request = GymReset.Request()  #TODO: new service message type for reset service
