@@ -4,7 +4,7 @@ from itertools import combinations
 import numpy as np
 import pytest
 
-from .. import RosSimulationClient
+from ..simulations import RosSimulationClient
 from ..robots import MsjRobot
 
 SIMULATION_CLIENT = RosSimulationClient(robot=MsjRobot())
@@ -28,11 +28,8 @@ def test_simulation_client_step():
 
     new_robot_state = SIMULATION_CLIENT.forward_step_command(random_action)
 
-    for x, y in zip(initial_robot_state.joint_angles, new_robot_state.joint_angles):
-        assert np.abs(x - y) > 0.00001
-
-    for x, y in zip(initial_robot_state.joint_vels, new_robot_state.joint_vels):
-        assert (np.abs(x - y) > 0.00001 or np.abs(x - y) == 0)
+    assert not np.allclose(initial_robot_state.joint_angles, new_robot_state.joint_angles)
+    assert not np.allclose(initial_robot_state.joint_vels, new_robot_state.joint_vels)
 
 
 @pytest.mark.integration

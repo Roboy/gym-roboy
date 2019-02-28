@@ -10,7 +10,8 @@ assert os.path.isfile(MODEL_FILE), "File not found: '{}'".format(MODEL_FILE)
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO2
 
-from .envs import RoboyEnv, RosSimulationClient
+from .envs import RoboyEnv
+from .envs.simulations import RosSimulationClient
 from .envs.robots import MsjRobot
 
 

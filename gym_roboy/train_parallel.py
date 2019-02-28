@@ -4,7 +4,8 @@ import sys
 import gym
 from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines import PPO2
-from .envs import RoboyEnv, RosSimulationClient
+from .envs import RoboyEnv
+from .envs.simulations import RosSimulationClient
 from .envs.robots import MsjRobot
 
 

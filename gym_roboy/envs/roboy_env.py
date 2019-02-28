@@ -2,7 +2,7 @@ from typing import Tuple
 import numpy as np
 import gym
 from gym import spaces
-from . import SimulationClient
+from .simulations import SimulationClient
 from .robots import RobotState, RoboyRobot
 
 
@@ -39,6 +39,7 @@ class RoboyEnv(gym.GoalEnv):
         self.observation_space = spaces.Box(
             low=np.concatenate((robot.get_joint_angles_space().low, robot.get_joint_vels_space().low, robot.get_joint_angles_space().low)),
             high=np.concatenate((robot.get_joint_angles_space().high, robot.get_joint_vels_space().high, robot.get_joint_angles_space().high)),
+            dtype="float32",
         )
         self._set_new_goal()
         self.step_num = 1
@@ -118,6 +119,9 @@ class RoboyEnv(gym.GoalEnv):
             "'{}' not between '{}' and '{}'".format(reward, self.reward_range[0], self.reward_range[1])
 
         return float(reward)  # cast from numpy.float to float
+
+    def seed(self, seed=None):
+        np.random.seed(seed)
 
     def _set_new_goal(self, goal_joint_angle=None):
         """If the input goal is None, we choose a random one."""

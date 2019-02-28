@@ -2,7 +2,8 @@ from typing import Sequence
 import numpy as np
 from itertools import combinations
 import pytest
-from .. import RoboyEnv, StubSimulationClient, RosSimulationClient
+from .. import RoboyEnv
+from ..simulations import StubSimulationClient, RosSimulationClient
 from ..robots import RobotState, MsjRobot
 
 
