@@ -75,8 +75,8 @@ def test_roboy_env_reaching_goal_joint_angle_but_moving_returns_done_equals_fals
 
     roboy_env._last_state.joint_vels = MSJ_ROBOT.get_joint_vels_space().high
 
-    assert not roboy_env._did_complete_successfully(current_state=roboy_env._last_state,
-                                                  goal_state=roboy_env._goal_state)
+    assert not roboy_env._did_reach_goal(current_state=roboy_env._last_state,
+                                         goal_state=roboy_env._goal_state)
 
 
 def test_roboy_env_joint_vel_penalty_affects_worst_possible_reward():
@@ -175,7 +175,7 @@ def test_roboy_env_maximum_episode_length():
     _, _, done, _ = env.step(np.zeros(env.action_space.shape))
     assert not done
 
-    assert not env._did_complete_successfully(env._last_state, env._goal_state)
+    assert not env._did_reach_goal(env._last_state, env._goal_state)
     _, _, done, _ = env.step(env.action_space.sample())
     assert done
 

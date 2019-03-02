@@ -62,12 +62,15 @@ class RoboyEnv(gym.GoalEnv):
         obs = self._make_obs(robot_state=new_state)
         info = {}
         reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
-        done = self._did_complete_successfully(current_state=new_state, goal_state=self._goal_state) or \
-               self.step_num > self._MAX_EPISODE_LENGTH
+        done = self._did_reach_goal(current_state=new_state, goal_state=self._goal_state) or \
+               self._ran_out_of_time()
         if done:
             self._set_new_goal()
 
         return obs, reward, done, info
+
+    def _ran_out_of_time(self) -> bool:
+        return self.step_num > self._MAX_EPISODE_LENGTH
 
     def _make_obs(self, robot_state: RobotState):
         return np.concatenate([
@@ -99,7 +102,7 @@ class RoboyEnv(gym.GoalEnv):
         if not current_state.is_feasible:
             reward -= np.abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
 
-        if self._did_complete_successfully(current_state=current_state, goal_state=goal_state) and \
+        if self._did_reach_goal(current_state=current_state, goal_state=goal_state) and \
            self._is_agent_getting_bonus_for_reaching_goal:
             reward += self._BONUS_FOR_REACHING_GOAL
 
@@ -119,7 +122,7 @@ class RoboyEnv(gym.GoalEnv):
                                                  joint_vel=self._GOAL_JOINT_VEL,
                                                  is_feasible=True)
 
-    def _did_complete_successfully(self, current_state: RobotState, goal_state: RobotState) -> bool:
+    def _did_reach_goal(self, current_state: RobotState, goal_state: RobotState) -> bool:
         angles_l2_distance = _l2_distance(current_state.joint_angles, goal_state.joint_angles)
         angles_are_close = bool(angles_l2_distance < self._MAX_DISTANCE_JOINT_ANGLE/500)  # cast from numpy.bool to bool
 
