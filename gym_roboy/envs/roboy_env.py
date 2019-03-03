@@ -63,13 +63,13 @@ class RoboyEnv(gym.GoalEnv):
         info = {}
         reward = self.compute_reward(current_state=new_state, goal_state=self._goal_state, info=info)
         done = self._did_reach_goal(current_state=new_state, goal_state=self._goal_state) or \
-               self._ran_out_of_time()
+               self._reached_max_steps()
         if done:
             self._set_new_goal()
 
         return obs, reward, done, info
 
-    def _ran_out_of_time(self) -> bool:
+    def _reached_max_steps(self) -> bool:
         return self.step_num > self._MAX_EPISODE_LENGTH
 
     def _make_obs(self, robot_state: RobotState):
@@ -142,7 +142,16 @@ def _l2_distance(joint_angle1, joint_angle2):
 
 @typechecked
 def _rescale_from_one_space_to_other(
-        input_space: spaces.Box, output_space: spaces.Box, input_val: np.ndarray) -> np.ndarray:
+        input_val: np.ndarray, input_space: spaces.Box, output_space: spaces.Box) -> np.ndarray:
+    """
+    Transforms a point in a input space to a corresponding point in the
+    output space. The output point is as far away from the output
+    boundaries as the input point is from the input boundaries.
+    :param input_space: bounded Box
+    :param output_space: bounded Box
+    :param input_val: The input point
+    :return: The output point in the output space
+    """
     assert input_space.shape == output_space.shape
     assert input_space.contains(input_val)
     slope = (output_space.high-output_space.low) / (input_space.high-input_space.low)
