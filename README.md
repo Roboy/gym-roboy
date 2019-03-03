@@ -1,3 +1,15 @@
+# Goals
+This in an implementation of an OpenAI gym environment to train controllers 
+for Roboy. They provide standardized interface definitions for RL: https://github.com/openai/gym/tree/master/gym/envs
+
+The goals of this repo are: 
+* To provide flexibility for you to train controllers for different 
+robots (e.g. MSJ Platfrom, Upper Body, etc.).
+* Second, it is straightforward to parallelize the environments s.t.
+you can scale the controller training with more compute resources.
+* Lastly, we kept it easy to implement communication to  your 
+simulation engine of choice (e.g. to MuJoCo, Gazebo, etc.).
+
 # Installation
 Python3.5 is required. Either use `python3` and `pip3` variants, 
 or activate a Python virtual environment. If you are using the docker container `deepandreinforced/rl:latest`, you
@@ -6,19 +18,14 @@ do not need to install this repo again. Otherwise:
 python3 -m pip install -r requirements.txt
 python3 -m pip install -e .
 ```
-# Goals
-This in an implementation of an OpenAI gym environment to train controllers 
-for Roboy. The goals are: 
-* To provide flexibility for you to train controllers for different 
-robots (e.g. MSJ Platfrom, Upper Body, etc.).
-* Second, it is straightforward to parallelize the environments s.t.
-you can scale the controller training with more compute resources.
-* Lastly, we kept it easy to implement communication to  your 
-simulation engine of choice (e.g. to MuJoCo, Gazebo, etc.).
-
+Installing this repo as a pip package is necessary if you would like to use the 
+environment constructor form:
+```python
+env = gym.make('msj-control-v1')
+```
 # Structure
 
-- The class `RoboyEnv` implements the `gym.GoalEnv` (OpenAI's interface definition).
+- The class `RoboyEnv` implements gym's `gym.GoalEnv`. 
 It is the central class in this repo.
 
 #### Directory `simulations/`
