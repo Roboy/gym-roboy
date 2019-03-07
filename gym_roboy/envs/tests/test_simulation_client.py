@@ -7,7 +7,8 @@ import pytest
 from ..simulations import RosSimulationClient
 from ..robots import MsjRobot
 
-SIMULATION_CLIENT = RosSimulationClient(robot=MsjRobot())
+ROBOT = MsjRobot()
+SIMULATION_CLIENT = RosSimulationClient(robot=ROBOT)
 
 
 @pytest.mark.integration
@@ -23,9 +24,10 @@ def test_simulation_client_reset():
 def test_simulation_client_step():
     """calling the step function changes the robot state"""
 
-    random_action = [0.01, 0.01, 0.01, 0.015, 0.01, 0.02, 0.02, 0.02]
+    random_action = ROBOT.get_action_space().sample().tolist()
     initial_robot_state = SIMULATION_CLIENT.forward_step_command(random_action)
 
+    random_action = ROBOT.get_action_space().sample().tolist()
     new_robot_state = SIMULATION_CLIENT.forward_step_command(random_action)
 
     assert not np.allclose(initial_robot_state.joint_angles, new_robot_state.joint_angles)
@@ -52,9 +54,9 @@ def test_simulation_client_get_new_goal_joint_angles_results_are_different():
 
 @pytest.mark.integration
 def test_simulation_client_stepping_on_the_boundary_does_not_reset():
-    random.seed(0)
+    SIMULATION_CLIENT.forward_reset_command()
     actions = MsjRobot.get_action_space()
-    strong_action = [float(random.choice(i)) for i in zip(actions.high, actions.low)]
+    strong_action = actions.low.tolist()
     SIMULATION_CLIENT.forward_reset_command = lambda: pytest.fail("should not call this")
 
     for _ in range(1000):

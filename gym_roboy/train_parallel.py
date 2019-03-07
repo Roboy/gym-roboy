@@ -13,7 +13,7 @@ is_results_dir_passed = len(sys.argv) is 3
 RESULTS_DIR = os.path.abspath(sys.argv[2]) if is_results_dir_passed else "./training_results"
 TENSORBOARD_DIR = os.path.join(RESULTS_DIR, "tensorboard")
 MODEL_FILE = os.path.join(RESULTS_DIR, "model.pkl")
-TRAINING_STEPS_BETWEEN_BACKUPS = 1000000
+TRAINING_STEPS_BETWEEN_BACKUPS = 100000
 
 
 def setup_constructor(rank, seed=0):
