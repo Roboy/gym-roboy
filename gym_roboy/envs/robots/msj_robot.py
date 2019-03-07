@@ -11,7 +11,9 @@ class MsjRobot(RoboyRobot):
 
     _DIM_ACTION = 8
     _MAX_TENDON_VEL = 0.02  # cm/s
-    _ACTION_SPACE = spaces.Box(low=-_MAX_TENDON_VEL, high=_MAX_TENDON_VEL, shape=(_DIM_ACTION,), dtype='float32')
+
+    _MAX_TENDON_LENGHT = 0.3  # cm
+    _ACTION_SPACE = spaces.Box(low=-_MAX_TENDON_LENGHT, high=_MAX_TENDON_LENGHT, shape=(_DIM_ACTION,), dtype='float32')
 
     @classmethod
     def get_action_space(cls) -> spaces.Box:
