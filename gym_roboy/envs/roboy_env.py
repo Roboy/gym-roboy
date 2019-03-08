@@ -25,7 +25,7 @@ class RoboyEnv(gym.GoalEnv):
         self._MAX_DISTANCE_JOINT_VELS = _l2_distance(robot.get_joint_vels_space().low, robot.get_joint_vels_space().high)
         self._PENALTY_FOR_TOUCHING_BOUNDARY = 1
         self._BONUS_FOR_REACHING_GOAL = 1000
-        self._MAX_EPISODE_LENGTH = 1000
+        self._MAX_EPISODE_LENGTH = 400
 
         self.reward_range = self._create_reward_range(robot=robot)
         self.action_space = spaces.Box(low=-1, high=1, shape=robot.get_action_space().shape, dtype="float32")
@@ -91,15 +91,15 @@ class RoboyEnv(gym.GoalEnv):
 
     def compute_reward(self, current_state: RobotState, goal_state: RobotState, info=None):
 
-        current_state = self._robot.normalize_state(current_state)
-        goal_state = self._robot.normalize_state(goal_state)
-        reward = -np.exp(_l2_distance(current_state.joint_angles, goal_state.joint_angles))
+        current_norm_state = self._robot.normalize_state(current_state)
+        goal_norm_state = self._robot.normalize_state(goal_state)
+        reward = -np.exp(_l2_distance(current_norm_state.joint_angles, goal_norm_state.joint_angles))
 
         if self._joint_vel_penalty:
-            normed_joint_vel = np.linalg.norm(current_state.joint_vels - goal_state.joint_vels)
+            normed_joint_vel = np.linalg.norm(current_norm_state.joint_vels - goal_norm_state.joint_vels)
             reward = (normed_joint_vel+1) * (reward-np.exp(reward))
 
-        if not current_state.is_feasible:
+        if not current_norm_state.is_feasible:
             reward -= np.abs(self._PENALTY_FOR_TOUCHING_BOUNDARY)
 
         if self._did_reach_goal(current_state=current_state, goal_state=goal_state) and \
@@ -124,10 +124,10 @@ class RoboyEnv(gym.GoalEnv):
 
     def _did_reach_goal(self, current_state: RobotState, goal_state: RobotState) -> bool:
         angles_l2_distance = _l2_distance(current_state.joint_angles, goal_state.joint_angles)
-        angles_are_close = bool(angles_l2_distance < self._MAX_DISTANCE_JOINT_ANGLE/500)  # cast from numpy.bool to bool
+        angles_are_close = bool(angles_l2_distance < self._MAX_DISTANCE_JOINT_ANGLE/200)  # cast from numpy.bool to bool
 
         vels_l2_distance = _l2_distance(current_state.joint_vels, goal_state.joint_vels)
-        vels_are_close = bool(vels_l2_distance < self._MAX_DISTANCE_JOINT_VELS/100)  # fraction not yet tuned
+        vels_are_close = bool(vels_l2_distance < self._MAX_DISTANCE_JOINT_VELS / 5)  # fraction not yet tuned
 
         if angles_are_close and vels_are_close:
             print("#############GOAL REACHED#############")

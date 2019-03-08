@@ -22,7 +22,7 @@ class Logger:
         if self.step % 1 == 0:
             print("reward:", reward)
         self.step += 1
-        time.sleep(0.15)
+        time.sleep(0.03)
 
 
 def main():
