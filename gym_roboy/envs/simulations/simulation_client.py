@@ -19,7 +19,7 @@ class SimulationClient:
     def forward_reset_command(self) -> RobotState:
         raise NotImplementedError
 
-    def get_new_goal_joint_angles(self):
+    def get_new_goal_joint_angles(self) -> np.ndarray:
         raise NotImplementedError
 
 

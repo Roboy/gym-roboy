@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List
 from typeguard import typechecked
 import rclpy
@@ -23,7 +22,6 @@ class RosSimulationClient(SimulationClient):
         self._step_size = 0.1
         self.node = rclpy.create_node('gym_python_client_node_' + str(process_idx))
         self._create_ros_client(process_idx)
-        self._last_time_gym_goal_service_was_called = datetime.now()
 
     def _create_ros_client(self, process_idx: int):
         self.step_client = self.node.create_client(GymStep, '/instance' + str(process_idx) + '/gym_step')
@@ -76,7 +74,6 @@ class RosSimulationClient(SimulationClient):
         self._check_service_available_or_timeout(self.goal_client)
         req = GymGoal.Request()
         future = self.goal_client.call_async(req)
-        self._last_time_gym_goal_service_was_called = datetime.now()
         rclpy.spin_until_future_complete(self.node, future)
         res = future.result()
         if res is not None:

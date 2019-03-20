@@ -73,7 +73,7 @@ class RoboyRobot:
     def new_state(cls, joint_angle, joint_vel, is_feasible: bool) -> RobotState:
         joint_angle = np.array(joint_angle) if not isinstance(joint_angle, np.ndarray) else joint_angle
         joint_vel = np.array(joint_vel) if not isinstance(joint_vel, np.ndarray) else joint_vel
-        assert cls.get_joint_angles_space().contains(joint_angle)
+        assert cls.get_joint_angles_space().contains(joint_angle), joint_angle
         # assert cls.get_joint_vels_space().contains(joint_vels) TODO: This assert should work
         return RobotState(joint_angles=joint_angle, joint_vels=joint_vel, is_feasible=is_feasible)
 
